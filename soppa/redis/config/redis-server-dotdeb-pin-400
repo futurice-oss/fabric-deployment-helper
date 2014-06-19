@@ -1,0 +1,8 @@
+Package:  *
+Pin: release o=packages.dotdeb.org
+Pin-Priority: 400
+
+Package:  *redis-server*
+Pin: release o=packages.dotdeb.org
+Pin-Priority: 500
+
