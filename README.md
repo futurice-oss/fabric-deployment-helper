@@ -20,3 +20,12 @@ def graphite_deploy():
     i = graphite(ctx=ctx)
     i.setup()
 
+HOW DOES IT WORK?
+=================
+
+1. Deployables extend Soppa
+ - .get_ctx() combines global and local context to be able to deploy multiple things at once.
+ - Fabric functionality is tied to class methods (sudo -> self.sudo), to run in correct context
+ - .setup() is the single entrypoint to get the deployable up/updated.
+ - Dependencies in needs=[] (other deployables) and packages={} (apt-get, pip, ...)
+
