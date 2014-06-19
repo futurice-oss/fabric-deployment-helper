@@ -37,3 +37,6 @@ HOW DOES IT WORK?
             {'postgres': {'user': 'bob'}}}
  - Instance: sentry(dict(project='myproject'))
 
+4. Can deploy locally on OSX by calling aslocal()
+ - sudo, run will map to local
+
