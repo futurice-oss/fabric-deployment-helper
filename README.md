@@ -29,3 +29,11 @@ HOW DOES IT WORK?
  - .setup() is the single entrypoint to get the deployable up/updated.
  - Dependencies in needs=[] (other deployables) and packages={} (apt-get, pip, ...)
 
+2. Configuration templates in config/ directory of deployables
+ - overrides placed into a local config/ directory
+
+3. Context can be global or instance specific
+ - Global: env.ctx= {'sentry': {'project': 'myproject'},
+            {'postgres': {'user': 'bob'}}}
+ - Instance: sentry(dict(project='myproject'))
+
