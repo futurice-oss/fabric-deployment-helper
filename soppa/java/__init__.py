@@ -17,7 +17,7 @@ class Java(Soppa):
 
     def setup(self):
         self.sudo("mkdir -p {java_path}")
-        if not self.exists(env.java_pkg):
+        if not self.exists(self.java_pkg):
             self.sudo("""wget --no-cookies \
             --no-check-certificate \
             --header "Cookie: oraclelicense=accept-securebackup-cookie" \
@@ -26,7 +26,7 @@ class Java(Soppa):
         conf()
 
     def conf(self):
-        env.java_home = java_home()
+        self.java_home = java_home()
         self.sudo("update-alternatives --install /usr/bin/java java {java_home}/bin/java 20000")
         self.sudo("update-alternatives --install /usr/bin/javac javac {java_home}/bin/javac 20000")
         self.sudo("touch /etc/environment")
@@ -36,7 +36,7 @@ class Java(Soppa):
         return self.sudo("cd {java_path} && ls -t|head -1").strip()
 
     def java_home(self):
-        return "{0}{1}".format(env.java_path, java_version())
+        return "{0}{1}".format(self.java_path, java_version())
 
     def check(self):
         pass

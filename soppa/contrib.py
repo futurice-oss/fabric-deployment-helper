@@ -1,6 +1,5 @@
 import os, sys, copy, re
 from contextlib import contextmanager
-import fnmatch
 import inspect
 
 # import and prefix fabric functions to not inadvertedly use them
@@ -11,117 +10,17 @@ from fabric.decorators import with_settings
 from fabric.operations import prompt as fabric_prompt
 
 from soppa import *
+from soppa.fmt import formatloc
+from soppa.tools import import_string, Upload, LocalDict
 
 env.possible_bugged_strings = []
 env.ctx_failure = []
 
-from importlib import import_module
-def import_string(dotted_path):
-    """ Import something, eg. 'soppa.pip', or 'x.y.z' """
-    try:
-        module_path, class_name = dotted_path.rsplit('.', 1)
-    except (ValueError, AttributeError) as e:
-        module_path = dotted_path
-    try:
-        return import_module(dotted_path)
-    except ImportError, e:
-        module = import_module(module_path)
-        try:
-            return getattr(module, class_name)
-        except ImportError, e:
-            log.debug(e)
-
-class Upload(object):
-    def __init__(self, frm, to, instance, caller_path):
-        self.env = instance.get_ctx()
-        self.args = (frm, to)
-        self.caller_path = caller_path
-
-        self.up()
-
-    def find(self, path, needle):
-        matches = []
-        for root, dirnames, filenames in os.walk(path):
-            for filename in fnmatch.filter(filenames, needle):
-                matches.append(os.path.join(root, filename))
-        return matches
-
-    def choose_template(self):
-        filename = self.args[0].split('/')[-1]
-        filepath = '{0}{1}'.format(self.caller_path, self.args[0])
-        rs = []
-        def wrapper(p):
-            if p.startswith('/'):
-                return p
-            p = os.path.join(self.env['local_project_root'], p)
-            return p
-        for k in self.env['config_dirs']:
-            rs += self.find(wrapper(k), filename)
-        if rs:
-            filepath = '{0}'.format(rs[0])
-        return filepath
-
-    def up(self):
-        from_path = formatloc(self.args[0], self.env)
-        if not from_path.startswith('/'):
-            filepath = self.choose_template()
-            self.args = (filepath,) + self.args[1:]
-
-import string, copy, re, copy
-def formatloc(s, ctx={}, **kwargs):
-    """ Lazy evaluation for strings """
-    if not isinstance(s, basestring) and not callable(s):
-        return s
-    if 'raw' in kwargs:
-        return s
-    for times in range(6):
-        kw = {}
-        # adds values no interpolated values with defaults
-        if isinstance(s, basestring):
-            kw.update(**{k[1]: '' for k in string.Formatter().parse(s) if k[1] and '.' not in k[1]})
-            s = s.replace('{}','{{}}')
-            if '{' not in s:
-                break
-        keys = kw.keys()
-        for key in keys:
-            kw.update({key: getattr(ctx, key, '{{{0}}}'.format(key))})
-
-        kw.update(**ctx)
-        kw.update(**kwargs)
-        
-        # resolve functions
-        for k,v in kw.iteritems():
-            if k in keys:
-                if callable(v):
-                    kw[k] = v(kw)
-        try:
-            if callable(s):
-                s = s(kw)
-            else:
-                if isinstance(s, basestring):
-                    s = s.format(**kw)
-        except IndexError, e:
-            print "EE",e
-            raise KeyError
-    return s
-
-class LocalDict(dict):
-    """ Format variables against context on return """
-    def __getattr__(self, key):
-        try:
-            if key.startswith('__'):
-                return self[key]
-            return formatloc(self[key], self)
-        except KeyError:
-            # to conform with __getattr__ spec
-            raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        self[key] = value
-
 class Soppa(object):
     # static
-    soppa_modules_installed = []
+    soppa_modules_installed = set()
+    needs = []
+    packages = {}
 
     def __init__(self, *args, **kwargs):
         self.args = args
@@ -133,9 +32,44 @@ class Soppa(object):
                 and not self.kwargs.get('ctx'):
             self.kwargs['ctx'] = self.args[0]
 
-        Soppa.soppa_modules_installed.append(self.get_name())
+        Soppa.soppa_modules_installed.add(self.get_name())
 
-        self.set_context(*args, **kwargs)
+        # Configuration
+        context = LocalDict()
+        # global variables, if not available
+        # TODO: scope to self.env, in templates {env.X} ?
+        envcopy = {}
+        for k,v in env.iteritems():
+            if not hasattr(self, k):
+                envcopy[k] = v
+        context.update(**envcopy)
+
+        # parent variables
+        context.update(**kwargs.get('ctx_parent', {}))
+
+        # Do not pass internal Soppa variables onward from parent
+        ignored_internal_variables = ['needs', 'packages']
+        for k in ignored_internal_variables:
+            if context.get(k):
+                del context[k]
+
+        # global class variables
+        context.update(**env.ctx.get(self.get_name(), {}))
+
+        # instance variables
+        context.update(**kwargs.get('ctx', {}))
+
+        # set initial state based on context
+        for k,v in context.iteritems():
+            # TODO: throw exception, if settings a needs=[] var
+            setattr(self, k, v)
+
+    def parent_context(self):
+        """ Context to pass onto dependencies """
+        c = {
+            'project': self.project,
+        }
+        return c
 
     # Local extensions to Fabric
     def local_sudo(self, cmd, capture=True, **kwargs):
@@ -160,14 +94,14 @@ class Soppa(object):
         return fabric_hide(*groups)
 
     def sudo(self, command, *args, **kwargs):
-        if env.get('local_deployment'):
+        if env.local_deployment:
             return self.local_sudo(command, *args, **kwargs)
         return fabric_sudo(self.fmt(command), *args, **kwargs)
 
     def run(self, command, **kwargs):
-        if self.env.get('local_deployment'):
+        if env.local_deployment:
             return self.local(command, **kwargs)
-        if self.env.get('use_sudo'):
+        if kwargs.get('use_sudo'):
             return self.sudo(command, **kwargs)
         else:
             return fabric_run(self.fmt(command), **kwargs)
@@ -177,17 +111,18 @@ class Soppa(object):
 
     def put(self, local_path, remote_path, **kwargs):
         local_path = getattr(local_path, 'name', local_path)
-        if self.env.get('local_deployment'):
+        if env.local_deployment:
             return self.local_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
         if env.get('use_sudo'):
             kwargs['use_sudo'] = True
         return fabric_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
 
-    def get(self, remote_path, local_path, **kwargs):
+    # NOTE: get collides with Python dictionaries
+    def get_file(self, remote_path, local_path, **kwargs):
         local_path = getattr(local_path, 'name', local_path)
-        if self.env.get('local_deployment'):
+        if env.local_deployment:
             return self.local_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
-        if env.get('use_sudo'):
+        if env.use_sudo:
             kwargs['use_sudo'] = True
         return fabric_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
 
@@ -213,10 +148,10 @@ class Soppa(object):
             os.chdir(self.fmt('{basedir}'))
 
     def has_need(self, string):
-        return any([re.findall(string, k) for k in self.env.needs])
+        return any([string == k.split('.')[-1] for k in self.needs])
 
     def find_need(self, string):
-        for k in self.env.needs:
+        for k in self.needs:
             if re.findall(string, k):
                 return k
         return None
@@ -246,13 +181,12 @@ class Soppa(object):
         self.install_packages(self)
         for recipe in self.get_needs():
             self.install_packages(recipe)
-        if not self.env.TESTING:
+        if not self.TESTING:
             self.pip.synchronize_python_packages()
 
     def add_need(self, string):
         """ Add additional 'need' dynamically """
-        self.env.setdefault('needs', [])
-        self.env.needs.append(string)
+        self.needs.append(string)
         self.get_and_load_need(string)
 
     def fmt(self, string, **kwargs):
@@ -260,8 +194,7 @@ class Soppa(object):
         self.fmt(string) vs string.format(**self.get_ctx())
         self.fmt(string, foo=2) vs string.format(foo=2, **self.get_ctx())
         """
-        ctx = self.get_ctx()
-        ctx.update(**kwargs)
+        ctx = self.get_ctx(**kwargs)
         result = formatloc(string, ctx)
         possible_unfilled_vars = ('{' in result)
         if possible_unfilled_vars:
@@ -271,10 +204,8 @@ class Soppa(object):
     def up(self, frm, to, ctx={}):
         """ Upload a template, with arguments relative to calling path """
         caller_path = here(fn=inspect.getfile(sys._getframe(1)))
-        ctx = ctx or self.get_ctx()
-
         upload = Upload(frm, to, instance=self, caller_path=caller_path)
-        self.template.up(*upload.args, context=ctx)
+        self.template.up(*upload.args, context=self.get_ctx(**ctx))
 
     def setup(self):
         return {}
@@ -282,32 +213,10 @@ class Soppa(object):
     def get_name(self):
         return self.__class__.__name__.lower()
 
-    def set_context(self, *args, **kwargs):
-        # Configuration is a layer, top to bottom:
-        self.env = LocalDict()
-
-        # global variables
-        self.env.update(**env)
-
-        # parent variables
-        self.env.update(**kwargs.get('ctx_parent', {}))
-
-        # Do not pass internal Soppa variables onward
-        ignored_internal_variables = ['needs', 'packages']
-        for k in ignored_internal_variables:
-            if self.env.get(k):
-                del self.env[k]
-
-        # class variables
-        self.env.update(**self.get_class_settings())
-
-        # global class variables
-        self.env.update(**env.ctx.get(self.get_name(), {}))
-
-        # instance variables
-        self.env.update(**kwargs.get('ctx', {}))
-
     def get_class_settings(self):
+        """ Get all class and instance variables.
+        - __dict__ is not enough.
+        """
         rs = {}
         def is_valid(key, value):
             # TODO: only allow strings, numbers?
@@ -317,29 +226,23 @@ class Soppa(object):
                 and not inspect.isclass(value):
                 return True
             return False
-        for key,value in self.__class__.__dict__.iteritems():
+        values = inspect.getmembers(self)
+        for key,value in values:
             if is_valid(key, value):
                 rs[key] = value
         return rs
 
-    def get_ctx(self, include_needs=True):
-        """ Get context of instance and its dependencies """
-        rs = {}
-        if include_needs:
-            for key in self.env.get('needs', []):
-                name = key.split('.')[-1]
-                try:
-                    rs.update(getattr(self, name).get_ctx(include_needs=False))
-                except Exception, e:
-                    env.ctx_failure.append([self, key, e])
-        rs.update(self.env)
-        for k,v in rs.iteritems():
-            rs[k] = formatloc(v, rs)
+    def get_ctx(self, **kwargs):
+        rs = LocalDict()
+        self.get_needs()
+        rs.update(**self.get_class_settings())
+        rs.update(**kwargs)
         return rs
     
     def get_needs(self):
+        """ Assigns dependencies to instance, and returns as list """
         rs = []
-        for k in self.env.get('needs', []):
+        for k in self.needs:
             name = k.split('.')[-1]
             rs.append(getattr(self, name))
         return rs
@@ -357,33 +260,23 @@ class Soppa(object):
             if not action in defaults.actions:
                 raise Exception("Usage: {0}:{1}".format(self.get_name(), '|'.join(defaults.actions)))
 
-    def cli_run(self, action=None, *args, **kwargs):
-        """ register() calls this function
-        - for usage via fabric CLI
-        """
-        print "TODO: CLI RUN",action,type(action),args,kwargs
+    def cli_interface(self, action=None, *args, **kwargs):
+        raise Exception("TODO")
 
     def get_need(self, name):
-        for k in self.env.get('needs', []):
+        for k in self.needs:
             if k.endswith(name):
                 return k
         return None
 
     def get_and_load_need(self, key, *args, **kwargs):
+        """ On-demand needs=[] resolve """
         # remove instance specific kwargs.ctx
-        kwargs_copy = kwargs
-        if kwargs_copy.get('ctx'):
-            del kwargs_copy['ctx']
-
-        # pass parent context
-        kwargs_copy['ctx_parent'] = self.env
-
         name = key.split('.')[-1]
         module = import_string(key)
         fn = getattr(module, name)
 
-        instance = fn(ctx_parent=self.env)
-        instance.set_context(*args, **kwargs_copy)
+        instance = fn(ctx_parent=self.parent_context())
         setattr(self, name, instance)
 
         return instance
@@ -392,10 +285,11 @@ class Soppa(object):
         try:
             return self.__dict__[key]
         except:
-            # load dependencies lazily
+            # lazy-load dependencies
             if self.has_need(key):
-                return self.get_and_load_need(self.find_need(key), *self.args,
-                                                                    **self.kwargs)
+                return self.get_and_load_need(self.find_need(key),
+                        *self.args,
+                        **self.kwargs)
             raise
 
     def __unicode__(self):
@@ -407,7 +301,7 @@ def register(klass, *args, **kwargs):
 
     fabric_task = None
     def task_instantiate():
-        klass().cli_run()
+        klass().cli_interface()
 
     fabric_task = task(name=name)(task_instantiate)
 

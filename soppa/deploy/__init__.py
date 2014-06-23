@@ -33,7 +33,7 @@ class DeployFrame(Soppa):
 
     def setup_needs(self):
         instances = []
-        for key in self.env.get('needs', []):
+        for key in self.needs:
             name = key.split('.')[-1]
             instance = getattr(self, name)
             getattr(instance, 'setup')()
@@ -86,7 +86,7 @@ class DeployFrame(Soppa):
 
     def dirs(self):
         self.sudo('mkdir -p {www_root}dist/')
-        self.sudo('mkdir -p {basepath}{{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}}')
+        self.sudo('mkdir -p {basepath}{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}')
 
     def ask_sudo_password(self, capture=False):
         print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
@@ -98,7 +98,7 @@ class DeployFrame(Soppa):
 
     def upload_tar(self):
         self.put('{deploy_tarball}', '{basepath}packages/')
-        with self.cd(self.env.basepath):
+        with self.cd(self.basepath):
             self.run('mkdir -p releases/{release}')
             self.run('tar zxf packages/{release}.tar.gz -C releases/{release}')
         self.local('rm {deploy_tarball}')

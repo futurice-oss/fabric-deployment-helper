@@ -1,14 +1,13 @@
 from soppa.contrib import *
-from soppa.alias import mlcd
 
 from soppa.deploy import DeployFrame
 
 class Uwsgi(DeployFrame):
-    uwsgi_processes=2
-    uwsgi_threads=2
-    uwsgi_wsgi='{{project}}.wsgi:application'
-    uwsgi_socket='127.0.0.1:5900'
-    uwsgi_stats='127.0.0.1:9191'
+    processes=2
+    threads=2
+    wsgi='{project}.wsgi:application'
+    socket='127.0.0.1:5900'
+    stats='127.0.0.1:9191'
     needs = [
         'soppa.virtualenv',
         'soppa.linux',

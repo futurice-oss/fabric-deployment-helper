@@ -14,12 +14,12 @@ class Vagrant(Soppa):
         Romain forwarding for local development with Vagrant.
         domain (host) -> domain (guest)
         """
-        env.guest_ip = self.guest_ip()
-        env.guest_host_name = name
+        self.guest_ip = self.guest_ip()
+        self.guest_host_name = name
         # Host (remote) change
-        self.file.set_setting('/etc/hosts', '{0} {1}'.format('127.0.0.1', env.guest_host_name))
+        self.file.set_setting('/etc/hosts', '{0} {1}'.format('127.0.0.1', self.guest_host_name))
         # local change
         aslocal()
-        self.file.set_setting('/etc/hosts', '{0} {1}'.format(env.guest_ip, name))
+        self.file.set_setting('/etc/hosts', '{0} {1}'.format(self.guest_ip, name))
 
 vagrant_task, vagrant = register(Vagrant)

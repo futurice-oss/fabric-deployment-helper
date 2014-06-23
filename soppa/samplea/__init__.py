@@ -7,9 +7,9 @@ class SampleA(DeployFrame):
     needs=['soppa.sampleb']
 
     def hook_pre(self):
-        print "conf.projectA:",self.env.project
+        print "conf.projectA:",self.project
 
     def pre(self):
-        print "setup.projectA:", self.env.project
+        print "setup.projectA:", self.project
 
 samplea_task, samplea = register(SampleA)

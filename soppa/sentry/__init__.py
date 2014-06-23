@@ -28,49 +28,49 @@ class Sentry(PythonDeploy):
     ]
 
     def hook_start(self):
-        if self.env.sentry_web=='nginx':
+        if self.sentry_web=='nginx':
             self.add_need('soppa.nginx')
 
-        if self.env.sentry_web=='apache':
+        if self.sentry_web=='apache':
             self.add_need('soppa.apache')
 
-        if self.env.sentry_db=='mysql':
+        if self.sentry_db=='mysql':
             self.add_need('soppa.mysql')
 
-        if self.env.sentry_db=='postgres':
+        if self.sentry_db=='postgres':
             self.add_need('soppa.postgres')
 
     def hook_pre_config(self):
         self.sudo('mkdir -p {www_root}htdocs')
 
-        if self.env.sentry_web=='nginx':
+        if self.sentry_web=='nginx':
             self.up('config/sentry_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
-        if self.env.sentry_web=='apache':
+        if self.sentry_web=='apache':
             self.up('config/sentry_apache.conf', '{apache_dir}sites-enabled/')
 
         if self.has_need('supervisor'):
-            self.up('config/sentry_supervisor.conf', '{supervisor_conf_dir}')
+            self.up('config/sentry_supervisor.conf', '{supervisor.conf}')
 
 
     def hook_pre(self):
-        if unicode(self.env.get('dbengine')).find('mysql')!=-1:
-            self.env.sentry_db = 'mysql'
+        if self.fmt('{django.dbengine}').find('mysql')!=-1:
+            self.sentry_db = 'mysql'
 
         packages = []
-        if self.env.sentry_db == 'postgres':
+        if self.sentry_db == 'postgres':
             packages.append('psycopg2==2.5.2')
-        if self.env.sentry_db == 'mysql':
+        if self.sentry_db == 'mysql':
             packages.append('MySQL-python==1.2.5')
         self.pip.update_packages(packages=packages)
 
-        self.factory.database(choice=self.env.sentry_db, action='setup')
-        self.factory.webserver(choice=self.env.sentry_web, action='setup')
+        self.factory.database(choice=self.sentry_db, action='setup')
+        self.factory.webserver(choice=self.sentry_web, action='setup')
 
     def hook_post(self):
         self.up('config/conf.py', '{usedir}')
 
-        self.factory.webserver(choice=self.env.sentry_web, action='restart')
+        self.factory.webserver(choice=self.sentry_web, action='restart')
         self.supervisor.restart()
 
 sentry_task, sentry = register(Sentry)

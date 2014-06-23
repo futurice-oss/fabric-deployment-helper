@@ -9,8 +9,8 @@ Setup for http://www.virtualenv.org/en/latest/
 """
 
 class Virtualenv(Soppa):
-    virtualenv_dir='{www_root}{project}/venv/'
-    virtualenv_version='1.11.4'
+    path='{www_root}{project}/venv/'
+    version='1.11.4'
     is_active = True
     packages={
         'pip': 'config/requirements.txt',
@@ -20,14 +20,15 @@ class Virtualenv(Soppa):
     ]
 
     def setup(self):
-        self.pip.install_package_global('virtualenv=={virtualenv_version}'.format(**self.get_ctx()))
+        self.pip.install_package_global(
+                'virtualenv=={0}'.format(self.version))
 
         with settings(warn_only=True):
-            self.run('[ ! -d {virtualenv_dir} ] && rm -rf {virtualenv_dir} && '
+            self.run('[ ! -d {path} ] && rm -rf {path} && '
                  'virtualenv'
-                 ' --extra-search-dir={pip_python_packages_dir}'
+                 ' --extra-search-dir={pip.packages_to}'
                  ' --prompt="({project})"'
-                 ' {virtualenv_dir}'.format(**self.get_ctx()))
+                 ' {path}'.format(**self.get_ctx()))
 
     def packages_path(self):
         with self.activate():
@@ -37,7 +38,7 @@ class Virtualenv(Soppa):
     @contextmanager
     def activate(self):
         if self.is_active:
-            with self.prefix('source {0}bin/activate'.format(self.env.virtualenv_dir)):
+            with self.prefix('source {path}bin/activate'):
                 yield
         else:
             yield

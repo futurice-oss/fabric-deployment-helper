@@ -7,20 +7,20 @@ class Package(Soppa):
     """ Download packages over HTTP. Tarball only. """
 
     def start(self):
-        package_pkg = self.package_path(self.env.url)
+        package_pkg = self.package_path(self.url)
         self.dirs()
         if not self.exists(package_pkg):
             with self.cd('{basepath}'):
                 self.run('mkdir -p releases/{release}')
-                self.wget(self.env.url, package_pkg)
-                if self.package_in_dir(package_pkg, self.package_name(self.env.url)):
+                self.wget(self.url, package_pkg)
+                if self.package_in_dir(package_pkg, self.package_name(self.url)):
                     self.sudo("tar --strip-components=1 -zxf {0} -C releases/{1}"\
-                        .format(package_pkg, self.env.release))
+                        .format(package_pkg, self.release))
                 else:
                     self.sudo("tar -zxf {0} -C releases/{1}"\
                         .format(package_pkg, '{release}'))
         if not self.release_exists():
-            self.env.release = self.latest_release()
+            self.release = self.latest_release()
 
         self.ownership()
         self.symlink_release()

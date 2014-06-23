@@ -8,9 +8,10 @@ Supervisor: http://supervisord.org/
 """
 
 class Supervisor(DeployFrame):
-    supervisor_conf_dir='/etc/supervisor/conf.d/'
-    supervisor_opt='-c "/etc/supervisord.conf"'
-    supervisor_user='{deploy_user}'
+    conf='/etc/supervisor/conf.d/'
+    opt='-c "/etc/supervisord.conf"'
+    user='{deploy_user}'
+
     packages={'pip': ['supervisor==3.0']}
     needs=[
         'soppa.pip',
@@ -40,18 +41,18 @@ class Supervisor(DeployFrame):
         
     @with_settings(warn_only=True)
     def startcmd(self):
-        res = self.sudo("supervisorctl {supervisor_opt} start all")
+        res = self.sudo("supervisorctl {opt} start all")
         if not res.succeeded or any(k in res for k in ['no such file', 'refused connection', 'SHUTDOWN_STATE']):
             if 'SHUTDOWN_STATE' in res:
                 time.sleep(3)
-            self.sudo("supervisord {supervisor_opt}")
+            self.sudo("supervisord {opt}")
 
     @with_settings(warn_only=True)
     def stop(self):
-        res = self.sudo("supervisorctl {supervisor_opt} stop all")
+        res = self.sudo("supervisorctl {opt} stop all")
         if not res.succeeded or any(k in res for k in ['SHUTDOWN_STATE']):
             time.sleep(3)
-        self.sudo("supervisorctl {supervisor_opt} shutdown")
+        self.sudo("supervisorctl {opt} shutdown")
 
     @with_settings(warn_only=True)
     def restart(self):
@@ -62,10 +63,10 @@ class Supervisor(DeployFrame):
     @with_settings(warn_only=True)
     def soft_restart(self):
         # restart does not reload configurations?
-        self.sudo("supervisorctl {supervisor_opt} restart all")
+        self.sudo("supervisorctl {opt} restart all")
 
     def check(self):
-        result = self.sudo("supervisorctl {supervisor_opt} status")
+        result = self.sudo("supervisorctl {opt} status")
 
 
 supervisor_task, supervisor = register(Supervisor)

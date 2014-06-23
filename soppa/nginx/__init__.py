@@ -1,7 +1,4 @@
-import copy
-
 from soppa.contrib import *
-from soppa.alias import mlcd
 from soppa.deploy import DeployFrame
 
 class Nginx(DeployFrame):
@@ -18,7 +15,7 @@ class Nginx(DeployFrame):
     def pre(self):
         if not self.exists('{nginx_dir}sbin/nginx'):
             sctx = self.get_ctx()
-            sctx['nginx_dir'] = self.env.nginx_dir.rstrip('/')
+            sctx['nginx_dir'] = self.nginx_dir.rstrip('/')
             self.up('config/nginx.bash', '/usr/src/')
             with self.cd('/usr/src/'):
                 if self.operating.is_osx():
@@ -43,9 +40,9 @@ class Nginx(DeployFrame):
     @with_settings(warn_only=True)
     def restart(self):
         if self.operating.is_linux():
-            result = self.sudo(self.env.nginx_restart_command, pty=False)
+            result = self.sudo(self.nginx_restart_command, pty=False)
             if result.failed:
-                result = self.sudo(self.env.nginx_start_command, pty=False)
+                result = self.sudo(self.nginx_start_command, pty=False)
         if self.operating.is_osx():
             cmd = 'launchctl unload /Library/LaunchDaemons/nginx.plist '
             result = self.sudo(cmd)

@@ -22,6 +22,7 @@ def aslocal(prompt=True):
 
 @task
 def osx():
+    # NOTE: needs to be called before instantiation of recipes
     # OSX
     env.use_sudo = True
     env.user = os.environ['USER']
@@ -29,9 +30,13 @@ def osx():
     env.deploy_user = env.owner
     env.deploy_group = 'wheel'
     env.local_deployment = True
-    env.nginx_user = 'nobody'
-    env.nginx_group = env.deploy_group
-    env.supervisor_user = 'nobody'
+
+    env.ctx.setdefault('nginx', {})
+    env.ctx['nginx']['user'] ='nobody'
+    env.ctx['nginx']['group'] = env.deploy_group
+    env.ctx.setdefault('supervisor', {})
+    env.ctx['supervisor']['user'] = 'nobody'
+
     env.shell = "/bin/bash -c" # default: -l -c
     # MySQL-python will fail due unknown compiler flags in OSX Mavericks
     os.environ['CFLAGS'] = '-Qunused-arguments'

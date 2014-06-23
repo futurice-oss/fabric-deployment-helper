@@ -13,14 +13,15 @@ class Template(Soppa):
             filename = b
         return filename
 
-    def up(self, tpl, to, context=None, use_sudo=True):
-        """ Render a template and upload to server """
-        context = context or self.env
+    def up(self, tpl, to, context={}, use_sudo=True):
+        """ Render a template and upload to server
+        - Jinja uses {{foo}} for formatting, Python uses {foo}
+        """
         filename = self.determine_target_filename(
                 formatloc(tpl, context),
                 formatloc(to, context))
+        to = formatloc(to, context)
         assert '{' not in filename
-        # TODO: Jinja2 uses {{}}, incompatible with {} used for format()
         for k,v in context.iteritems():
             context[k] = formatloc(v, context)
         use_sudo = use_sudo or context.get('use_sudo', False)

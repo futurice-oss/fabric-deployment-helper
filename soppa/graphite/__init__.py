@@ -8,12 +8,12 @@ Carbon configuration from:
 https://github.com/graphite-project/carbon/tree/master/conf
 """
 class Graphite(PythonDeploy):
-    graphite_dir='/opt/graphite/'
-    graphite_web_dir='{graphite_dir}webapp/graphite/'
-    graphite_servername='localhost'
-    graphite_carbon_dir='/opt/graphite/'
+    path='/opt/graphite/'
+    web_path='{graphite_dir}webapp/graphite/'
+    host='localhost'
+    carbon_path='/opt/graphite/'
     # internal
-    required_settings=['graphite_servername']
+    required_settings=['host']
     packages={
         'pip': 'config/requirements.txt',
         'apt': ['libcairo2-dev','python-cairo','pkg-config','libpng3','libpng12-dev', 'libffi-dev'],
@@ -42,11 +42,11 @@ class Graphite(PythonDeploy):
             self.up('config/local_settings.py', '{graphite_dir}webapp/graphite/')
             self.sudo('chown {deploy_user} local_settings.py')
 
-        self.up('config/graphite_supervisor.conf', '{supervisor_conf_dir}')
+        self.up('config/graphite_supervisor.conf', '{supervisor.conf}')
         self.up('config/graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
         args = 'syncdb --noinput'
-        with self.virtualenv.activate() as a, self.cd('{graphite_web_dir}') as b:
+        with self.virtualenv.activate(), self.cd('{web_path}'):
             self.sudo('python manage.py {args}'.format(args=args))
 
         # add system-wide python-cairo into virtualenv

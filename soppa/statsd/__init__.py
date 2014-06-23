@@ -1,21 +1,21 @@
 from soppa.contrib import *
-from soppa.alias import mlcd
 from soppa.deploy import DeployFrame
 
 class StatsD(DeployFrame):
     needs=[
         'soppa.template',
         'soppa.supervisor',
+        'soppa.virtualenv',
     ]
 
-    def pre(self):
+    def hook_pre(self):
         if not self.exists('{basepath}statsd'):
             with self.cd('{basepath}'):
                 self.sudo('git clone https://github.com/etsy/statsd.git')
 
     def hook_pre_config(self):
         self.up('config/exampleConfig.js', '{basepath}statsd/')
-        self.up('config/statsd_supervisor.conf', '{supervisor_conf_dir}')
+        self.up('config/statsd_supervisor.conf', '{supervisor.conf}')
 
     def stats(self):
         """ stats|counters|timers """

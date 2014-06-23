@@ -1,9 +1,9 @@
 from soppa.contrib import *
 
 class Mysql(Soppa):
-    mysql_dbname='{project}'
-    mysql_dbuser='root'
-    mysql_dbpass=''
+    name='{project}'
+    user='root'
+    password=''
     packages={
         'apt': [
             'mysql-server',
@@ -15,30 +15,30 @@ class Mysql(Soppa):
 
     def conf(self):
         with settings(warn_only=True):
-            result = self.sudo('mysql -u{mysql_dbuser} -p{mysql_dbpass} -e "SELECT 1;"')
+            result = self.sudo('mysql -u{user} -p{password} -e "SELECT 1;"')
         with settings(warn_only=True):
-            result2 = self.sudo('mysql -u{mysql_dbuser} -p{mysql_dbpass} -e "use {mysql_dbname};"')
+            result2 = self.sudo('mysql -u{user} -p{password} -e "use {name};"')
             
         if result.failed or result2.failed:
             with settings(warn_only=True):
                 self.rights()
 
     def rights(self):
-        if not self.env.mysql_dbpass or not self.env.mysql_dbuser:
+        if not self.password or not self.user:
             raise Exception('Provide DATABASES settings')
         c = []
-        c.append("create database if not exists {mysql_dbname}")
+        c.append("create database if not exists {name}")
         c.append("DELETE FROM mysql.user WHERE User=''")
         c.append("flush privileges")
-        c.append("GRANT ALL ON {mysql_dbname}.* TO {mysql_dbuser}@'%' IDENTIFIED BY '{mysql_dbpass}'")
-        c.append("GRANT ALL ON {mysql_dbname}.* TO {mysql_dbuser}@'localhost' IDENTIFIED BY '{mysql_dbpass}'")
-        c.append("GRANT FILE ON *.* TO {mysql_dbuser}@'%' IDENTIFIED BY '{mysql_dbpass}'")
+        c.append("GRANT ALL ON {name}.* TO {user}@'%' IDENTIFIED BY '{password}'")
+        c.append("GRANT ALL ON {name}.* TO {user}@'localhost' IDENTIFIED BY '{password}'")
+        c.append("GRANT FILE ON *.* TO {user}@'%' IDENTIFIED BY '{password}'")
         c.append("flush privileges")
         self.mysqlcmd(c)
 
     def mysqlcmd(self, cmd, db=''):
         scmd = '; '.join(cmd) + ';'
-        mysql_cmd = scmd.format(**self.env)
+        mysql_cmd = scmd.format(**self.get_ctx())
         shcmd = """mysql -uroot -p -e "{0}" {1} """.format(mysql_cmd, db)
         return self.sudo(shcmd)
 

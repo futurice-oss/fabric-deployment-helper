@@ -20,12 +20,12 @@ class PythonDeploy(DeployFrame):
         self.pip.setup()
         self.dirs()
         self.ownership()
-        setup_runner(self.env.runner_path)
+        setup_runner(self.runner_path)
 
-        self.env.usedir = '{basepath}releases/{release}/'
-        if not self.env.project:
+        self.usedir = '{basepath}releases/{release}/'
+        if not self.project:
             raise Exception("Define project")
-        assert (self.env.release_time in self.env.usedir)
+        assert (self.release_time in self.usedir)
 
     def start(self):
         self.ask_sudo_password(capture=False)

@@ -1,7 +1,10 @@
 from soppa.contrib import *
 
 class Postgres(Soppa):
-    postgres_conf_dir='/etc/postgresql/9.1/main/'
+    path='/etc/postgresql/9.1/main/'
+    name='{project}'
+    user=''
+    password=''
     packages={
         'apt': [
             'postgresql-9.1',
@@ -20,7 +23,7 @@ class Postgres(Soppa):
         with settings(warn_only=True):
             self.sudo('pg_createcluster 9.1 main --start')
 
-        self.up('config/pg_hba.conf', '{postgres_conf_dir}')
+        self.up('config/pg_hba.conf', '{path}')
         # TODO: if settings modified, need to restart server
 
         self.sudo('chmod +x /etc/init.d/postgresql')
@@ -28,10 +31,10 @@ class Postgres(Soppa):
 
     def rights(self):
         # TODO: postgres.settings() dbname,dbuser not used at all
-        if not env.dbpass or not env.dbuser:
+        if not self.password or not self.user:
             raise Exception('Provide DATABASES settings')
         with settings(warn_only=True):
-            self.sudo("su - postgres -c 'createuser {dbuser} --no-superuser --no-createdb --no-createrole'")
-            self.sudo("su - postgres -c 'createdb {dbname} -O {dbuser}'")
+            self.sudo("su - postgres -c 'createuser {user} --no-superuser --no-createdb --no-createrole'")
+            self.sudo("su - postgres -c 'createdb {name} -O {user}'")
 
 postgres_task, postgres = register(Postgres)

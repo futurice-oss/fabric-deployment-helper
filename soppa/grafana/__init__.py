@@ -13,7 +13,7 @@ class Grafana(DeployFrame):
     ]
 
     def hook_start(self):
-        self.package.env.url = self.env.grafana_url
+        self.package.url = self.grafana_url
 
     def hook_post(self):
         # needs=[] have their own env

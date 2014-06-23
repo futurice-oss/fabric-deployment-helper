@@ -66,6 +66,17 @@ class SoppaTest(BaseSuite):
             self.assertEquals(os.getcwd(), os.path.join(base_dir, 'soppa/supervisor'))
             self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../soppa/supervisor/')))
 
+    def test_scoped_env(self):
+        p = pip()
+        v = virtualenv()
+        v.is_active = True
+        self.assertEquals(
+                '{virtualenv.is_active}'.format(**p.get_ctx()),
+                str(v.is_active))
+        self.assertTrue(p.virtualenv.is_active)
+        self.assertTrue(v.is_active)
+        self.assertTrue(p.get_ctx()['packages_to'])
+
     def test_formatting(self):
         self.assertEquals(formatloc('{foo}{bar}', {}), '{foo}{bar}')
         ctx = {'foo':'FOO'}
@@ -79,10 +90,24 @@ class SoppaTest(BaseSuite):
         ctx['town'] = 'Helsinki'
         self.assertEquals(formatloc('{foo}', ctx), 'Helsinki')
 
+        self.assertEquals(formatloc('{foo_bar}', {'foo_bar': 'oh'}), 'oh')
+        c = {'foo': LocalDict({'bar': 'oh.oh'})}
+        self.assertEquals(formatloc('{foo.bar}', c), 'oh.oh')
+
+        u = Upload('config/statsd_supervisor.conf', '{packages_from}', instance=pip(), caller_path='/tmp/')
+        self.assertTrue(all('{' not in k for k in u.args))
+
+        s = 'mkdir -p {basepath}{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}'
+        self.assertTrue('/x/' in formatloc(s, dict(basepath='/x/')))
+
     def test_formatting_bash(self):
         ctx = {'foo': 'FOO'}
         self.assertEquals(formatloc('{foo} {"print $2"}', ctx), 'FOO {"print $2"}')
         self.assertEquals(formatloc('{foo}', {}), '{foo}')
+
+    def test_formatting_invalid_string(self):
+        s = """'ifconfig -a eth1|grep "inet addr"|awk '{gsub("addr:","",$2); print $2}'"""
+        self.assertEquals(formatloc(s, {}), s)
 
     def test_formatting_fun(self):
         def lalafun(kw):
@@ -136,24 +161,24 @@ class ModuleTest(BaseSuite):
         ma = moda()
         mb = modb()
         ma.setup()
-        self.assertNotEqual(ma.env.version, mb.env.version)
-        self.assertEquals(ma.env.project, 'name_moda')
-        self.assertEquals(ma.modb.env.project, 'name_modb')
+        self.assertNotEqual(ma.version, mb.version)
+        self.assertEquals(ma.project, 'name_moda')
+        self.assertEquals(ma.modb.project, 'name_modb')
         ma = moda({'project': 'king'})
-        self.assertEquals(ma.env.project, 'king')
+        self.assertEquals(ma.project, 'king')
 
 class WaterTest(BaseSuite):
     def test_settings_layers(self):
         i = modc({'modc_hello': 'world', 'external': 'ok'})
-        self.assertEqual(i.env.modc_left, 'left')
-        self.assertEqual(i.env.modc_hello, 'world')
-        self.assertEqual(i.env.external, 'ok')
+        self.assertEqual(i.modc_left, 'left')
+        self.assertEqual(i.modc_hello, 'world')
+        self.assertEqual(i.external, 'ok')
 
         i = modc(ctx={'modc_hello': 'world', 'modc_left': 'right'})
-        self.assertEqual(i.env.modc_left, 'right')
-        self.assertEqual(i.env.modc_hello, 'world')
+        self.assertEqual(i.modc_left, 'right')
+        self.assertEqual(i.modc_hello, 'world')
 
         env.ctx['modc'] = {}
         env.ctx['modc']['modc_left'] = 'up'
         i = modc()
-        self.assertEqual(i.env.modc_left, 'up')
+        self.assertEqual(i.modc_left, 'up')

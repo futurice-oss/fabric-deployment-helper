@@ -4,10 +4,10 @@ import hashlib
 import os, tempfile, re, inspect, sys, time, copy
 
 class Pip(Soppa):
-    pip_requirements_file='{local_project_root}requirements.txt'
-    pip_local_pip_python_packages_dir='{local_project_root}dist/'
-    pip_python_packages_dir='{www_root}dist/'
-    pip_extra_index=''
+    requirements='{local_project_root}requirements.txt'
+    packages_from='{local_project_root}dist/'
+    packages_to='{www_root}dist/'
+    extra_index=''
     # internal
     dirhashes = {}
     packages = {
@@ -49,7 +49,7 @@ class Pip(Soppa):
 
     # DIST
     def get_existing_files(self, folder=None):
-        folder = self.fmt(folder or self.env.pip_local_pip_python_packages_dir)
+        folder = self.fmt(folder or self.packages_from)
         return set(
             self.filenameToRequirement(filename)
             for filename in os.listdir(folder) if filename)
@@ -73,18 +73,18 @@ class Pip(Soppa):
     def install_package(self, pipp=None):
         self.local(self.fmt('pip install'
               ' --no-use-wheel'
-              ' -d {pip_local_pip_python_packages_dir}'
+              ' -d {packages_from}'
               ' --exists-action=i'
-              ' {pip_extra_index}'
+              ' {extra_index}'
               ' {pipp}', pipp=pipp))
 
     def prepare_python_packages(self, requirements=None):
         # Download python packages (dependencies) into a local folder """
-        self.local('mkdir -p {0}'.format(self.env.pip_local_pip_python_packages_dir))
+        self.local('mkdir -p {0}'.format(self.packages_from))
         if isinstance(requirements, list):
             pass
         else:
-            use_req_file = self.fmt(requirements or self.env.pip_requirements_file)
+            use_req_file = self.fmt(requirements or self.requirements)
             requirements = self.requirements_as_pkgs(use_req_file)
         self.prepare_python_packages_from_list(requirements=requirements)
 
@@ -98,13 +98,13 @@ class Pip(Soppa):
             self.add(k)
 
     def prepare_python_packages_from_file(self, requirements=None):
-        use_req_file = self.fmt(requirements or self.env.pip_requirements_file)
+        use_req_file = self.fmt(requirements or self.requirements)
         self.prepare_python_packages_from_list(
                 self.requirements_as_pkgs(use_req_file))
 
     # PIPPACKAGE
     def get_namespace(self):
-        return self.env.get('project') or '_default_'
+        return hasattr(self, 'project') or '_default_'
 
     def add(self, name):
         self.packages.setdefault(self.get_namespace(), set())
@@ -134,7 +134,7 @@ class Pip(Soppa):
         self.up(f.name, filename)
         with self.virtualenv.activate():
             self.run(self.fmt('HOME={usedir} pip install'
-                ' -f file://{pip_python_packages_dir}'
+                ' -f file://{packages_to}'
                 ' -r {filename}'
                 ' --no-index', filename=filename))
         f.close()
@@ -147,8 +147,8 @@ class Pip(Soppa):
 
     def synchronize_python_packages(self, path=None, target_path=None):
         """ Sync downloaded local python packages folder """
-        path = self.fmt(path or self.env.pip_local_pip_python_packages_dir)
-        target_path = self.fmt(target_path or self.env.pip_python_packages_dir)
+        path = self.fmt(path or self.packages_from)
+        target_path = self.fmt(target_path or self.packages_to)
         if not self.path_in_sync(path):
             #' --delete',
             self.rsync.rsync_up('-vP',
@@ -163,7 +163,7 @@ class Pip(Soppa):
 
     def install_package_global(self, name):
         self.sudo(self.fmt('pip install {name}'
-            ' -f file://{pip_python_packages_dir}'
+            ' -f file://{packages_to}'
             ' --no-index --upgrade', name=name))
 
     def system_package_path(self, name):

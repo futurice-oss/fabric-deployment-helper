@@ -34,7 +34,7 @@ def run_cmd(cmd):#TODO:rename as remote_cmd
 
 def setup_runner(runner_path):
     from soppa.template import template
-    tpl = template({})
+    tpl = template()
     with mlcd('.'):
         tpl.up('runner.py', runner_path)
     sudo('chmod +x {0}'.format(runner_path))
