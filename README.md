@@ -3,6 +3,10 @@ soppa
 
 Soppa - Sauce for Fabric.
 
+Allows creating modules that do a single task for re-use.
+
+QUICK START
+===========
 
 Either install as package, or 'pip install -r requirements.txt' and done.
 Run tests with 'python setup.py test'.
