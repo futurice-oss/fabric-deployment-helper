@@ -1,4 +1,4 @@
-SECRET_KEY = '/~Xz2rpHMcEW/hqfV{Dsl{l^qI?=%81sWwb.$BqQrfq,x*z!k9'
+SECRET_KEY = ''
 ALLOWED_HOSTS = ['*']
 TIME_ZONE = 'Europe/Helsinki'
 
