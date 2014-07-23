@@ -7,9 +7,9 @@ Installs Oracle Java
 """
 
 class Java(Soppa):
-    java_url='http://download.oracle.com/otn-pub/java/jdk/7u55-b13/jdk-7u55-linux-x64.tar.gz'
-    java_pkg="/opt/java.tar.gz"
-    java_path="/opt/java-oracle/"
+    url='http://download.oracle.com/otn-pub/java/jdk/7u55-b13/jdk-7u55-linux-x64.tar.gz'
+    pkg="/opt/java.tar.gz"
+    path="/opt/java-oracle/"
     needs=[
         'soppa.file',
         'soppa.operating',

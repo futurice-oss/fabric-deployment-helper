@@ -1,8 +1,8 @@
 from soppa.contrib import *
 
 class Apache(Soppa):
-    apache_restart_command='/etc/init.d/apache2 restart'
-    apache_dir='/etc/apache2/'
+    restart_command='/etc/init.d/apache2 restart'
+    dir='/etc/apache2/'
     __doc__='conf|restart'
     pkg={'apt': ['apache2-mpm-prefork']}
 

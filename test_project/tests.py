@@ -75,7 +75,10 @@ class SoppaTest(BaseSuite):
                 str(v.is_active))
         self.assertTrue(p.virtualenv.is_active)
         self.assertTrue(v.is_active)
-        self.assertTrue(p.get_ctx()['packages_to'])
+        self.assertTrue(p.packages_to)
+        self.assertTrue(p.get_ctx()['pip_packages_to'])
+        self.assertTrue(v.get_ctx().pip.packages_to)
+        self.assertTrue(v.pip.packages_to)
 
     def test_formatting(self):
         self.assertEquals(formatloc('{foo}{bar}', {}), '{foo}{bar}')
@@ -166,6 +169,14 @@ class ModuleTest(BaseSuite):
         self.assertEquals(ma.modb.project, 'name_modb')
         ma = moda({'project': 'king'})
         self.assertEquals(ma.project, 'king')
+
+    def test_module_contains_variables_from_dependent_modules(self):
+        ma = moda()
+        ctx = ma.get_ctx()
+        self.assertEquals(ctx.moda_var, 'moda')
+        self.assertEquals(ctx.modb_var, 'modb')
+        with self.assertRaises(AttributeError):
+            ctx.modc_var
 
 class WaterTest(BaseSuite):
     def test_settings_layers(self):

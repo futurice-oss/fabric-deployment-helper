@@ -1,14 +1,19 @@
 from soppa.contrib import *
 
-from soppa.remote import run_cmd
-
 class Linux(Soppa):
     needs=[
         'soppa.file',
+        'soppa.remote',
     ]
 
     def swap_on(self):
-        run_cmd('soppa.linux.swap')
+        self.remote.run_cmd('soppa.linux.swap')
+
+    def hello(self, args=[]):
+        self.sudo('echo "hello world" {0}'.format(args))
+
+    def hello_remote(self, args=[]):
+        self.remote.run_cmd('soppa.linux.hello')
 
     def swap(self):
         if not self.exists('/swapfile'):

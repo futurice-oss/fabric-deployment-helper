@@ -4,7 +4,11 @@ import os, sys, argparse
 from fabric.api import execute
 
 from soppa.file import import_string
-from soppa.remote import use_fabric_env
+
+def use_fabric_env(path):
+    path = path or env.sync_filename
+    local_env = json.loads(open(path, 'r').read().strip() or '{}')
+    env.update(**local_env)
 
 def main(args):
     use_fabric_env(args.filename)

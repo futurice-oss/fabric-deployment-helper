@@ -8,8 +8,8 @@ Assuming custom sentry.conf.py as project-specific ./conf.py
 from soppa.python import PythonDeploy
 
 class Sentry(PythonDeploy):
-    sentry_web='nginx'
-    sentry_db='postgres'
+    web='nginx'
+    db='postgres'
     django_settings='conf'
     project='sentry'
     actions=['deploy',]
@@ -17,36 +17,31 @@ class Sentry(PythonDeploy):
     packages={
         'pip': ['sentry==6.4.4'],
     }
-    needs=[
-        'soppa.virtualenv',
-        'soppa.redis',
+    needs=PythonDeploy.needs+[
         'soppa.factory',
-        'soppa.pip',
-        'soppa.operating',
         'soppa.template',
-        'soppa.supervisor',
     ]
 
     def hook_start(self):
-        if self.sentry_web=='nginx':
+        if self.web=='nginx':
             self.add_need('soppa.nginx')
 
-        if self.sentry_web=='apache':
+        if self.web=='apache':
             self.add_need('soppa.apache')
 
-        if self.sentry_db=='mysql':
+        if self.db=='mysql':
             self.add_need('soppa.mysql')
 
-        if self.sentry_db=='postgres':
+        if self.db=='postgres':
             self.add_need('soppa.postgres')
 
     def hook_pre_config(self):
         self.sudo('mkdir -p {www_root}htdocs')
 
-        if self.sentry_web=='nginx':
+        if self.web=='nginx':
             self.up('config/sentry_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
-        if self.sentry_web=='apache':
+        if self.web=='apache':
             self.up('config/sentry_apache.conf', '{apache_dir}sites-enabled/')
 
         if self.has_need('supervisor'):
@@ -54,23 +49,23 @@ class Sentry(PythonDeploy):
 
 
     def hook_pre(self):
-        if self.fmt('{django.dbengine}').find('mysql')!=-1:
-            self.sentry_db = 'mysql'
+        #if self.fmt('{django.dbengine}').find('mysql')!=-1:
+        #    self.db = 'mysql'
 
         packages = []
-        if self.sentry_db == 'postgres':
+        if self.db == 'postgres':
             packages.append('psycopg2==2.5.2')
-        if self.sentry_db == 'mysql':
+        if self.db == 'mysql':
             packages.append('MySQL-python==1.2.5')
         self.pip.update_packages(packages=packages)
 
-        self.factory.database(choice=self.sentry_db, action='setup')
-        self.factory.webserver(choice=self.sentry_web, action='setup')
+        self.factory.database(choice=self.db, action='setup')
+        self.factory.webserver(choice=self.web, action='setup')
 
     def hook_post(self):
         self.up('config/conf.py', '{usedir}')
 
-        self.factory.webserver(choice=self.sentry_web, action='restart')
+        self.factory.webserver(choice=self.web, action='restart')
         self.supervisor.restart()
 
 sentry_task, sentry = register(Sentry)

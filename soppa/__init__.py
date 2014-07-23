@@ -11,6 +11,7 @@ log = logging.getLogger('soppa')
 env.ctx = {}
 env.local_project_root = here(fn=inspect.getfile(sys._getframe(1)))
 env.basedir = os.getcwd() + os.sep
+env.soppadir = here()
 
 env.DEBUG = False
 env.TESTING = False

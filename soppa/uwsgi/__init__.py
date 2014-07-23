@@ -26,10 +26,16 @@ class Uwsgi(DeployFrame):
         self.up('config/uwsgi.ini', '{basepath}config/vassals/')
         self.sudo('chown -fR {deploy_user} {basepath}config/')
         if self.linux.running(r"ps auxww|grep uwsgi|grep [e]mperor"):
-            with self.cd('{basepath}config/vassals/'):
-                self.sudo("find . -maxdepth 1 -mindepth 1 -type f -exec touch {} \+")
+            self.restart()
         else:
-            with self.virtualenv.activate() as a, self.cd(env.project_root) as b:
-                self.sudo('uwsgi --emperor {basepath}config/vassals --uid {deploy_user} --gid {deploy_group} --daemonize {basepath}logs/{project}-emperor.log')
+            self.start()
+
+    def restart(self):
+        with self.cd('{basepath}config/vassals/'):
+            self.sudo("find . -maxdepth 1 -mindepth 1 -type f -exec touch {} \+")
+
+    def start(self):
+        with self.virtualenv.activate() as a, self.cd(env.project_root) as b:
+            self.sudo('uwsgi --emperor {basepath}config/vassals --uid {deploy_user} --gid {deploy_group} --daemonize {basepath}logs/{project}-emperor.log')
 
 uwsgi_task, uwsgi = register(Uwsgi)

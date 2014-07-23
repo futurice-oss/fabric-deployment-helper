@@ -9,10 +9,10 @@ domain mapping /usr/local/etc/dnsmasq.conf
 usage: aslocal dnsmasq:setup
 """
 class Dnsmasq(Soppa):
-    dnsmasq_tld='dev'
-    dnsmasq_port='127.0.0.1'
-    dnsmasq_daemons_dir='/Library/LaunchDaemons/'
-    dnsmasq_brewtool='homebrew.mxcl.dnsmasq.plist'
+    tld='dev'
+    port='127.0.0.1'
+    daemons_dir='/Library/LaunchDaemons/'
+    brewtool='homebrew.mxcl.dnsmasq.plist'
     needs=[
         'soppa.file',
         'soppa.operating',

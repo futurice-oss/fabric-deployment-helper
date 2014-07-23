@@ -21,6 +21,7 @@ class Soppa(object):
     soppa_modules_installed = set()
     needs = []
     packages = {}
+    reserved_keys = ['needs','packages','soppa_modules_installed','reserved_keys','pkg',]
 
     def __init__(self, *args, **kwargs):
         self.args = args
@@ -36,12 +37,18 @@ class Soppa(object):
 
         # Configuration
         context = LocalDict()
-        # global variables, if not available
+        # global fabric variables
+        # - immediately evaluated against current context (slow)
         # TODO: scope to self.env, in templates {env.X} ?
         envcopy = {}
+        ctx = {}
+        ctx.update(**env)
+        ctx.update(**kwargs.get('ctx_parent', {}))
+        ctx.update(**env.ctx.get(self.get_name(), {}))
+        ctx.update(**kwargs.get('ctx', {}))
         for k,v in env.iteritems():
             if not hasattr(self, k):
-                envcopy[k] = v
+                envcopy[k] = formatloc(v, ctx)
         context.update(**envcopy)
 
         # parent variables
@@ -213,9 +220,10 @@ class Soppa(object):
     def get_name(self):
         return self.__class__.__name__.lower()
 
-    def get_class_settings(self):
+    def get_class_settings(self, for_self=False):
         """ Get all class and instance variables.
         - __dict__ is not enough.
+        - namespace module keys, to be usable directly, or via module instance (foo_bar vs foo.bar)
         """
         rs = {}
         def is_valid(key, value):
@@ -226,17 +234,37 @@ class Soppa(object):
                 and not inspect.isclass(value):
                 return True
             return False
+        def is_for_module(key):
+            if key \
+                    and not for_self \
+                    and key not in self.reserved_keys \
+                    and key in module_keys:
+                        return True
+            return False
         values = inspect.getmembers(self)
+        module_keys = self.__class__.__dict__.keys()
         for key,value in values:
             if is_valid(key, value):
-                rs[key] = value
+                if is_for_module(key):
+                    namespaced_key = key
+                    if not key.startswith('{0}_'.format(self.get_name())):
+                        namespaced_key = '{0}_{1}'.format(self.get_name(), key)
+                    rs[namespaced_key] = value # module scope
+                else:
+                    rs[key] = value # global scope
         return rs
 
     def get_ctx(self, **kwargs):
+        """ Gather and evaluate variables for context """
         rs = LocalDict()
-        self.get_needs()
-        rs.update(**self.get_class_settings())
+        needs = self.get_needs()
+        for k,v in enumerate(needs):
+            rs.update(**v.get_class_settings())
+        rs.update(**self.get_class_settings(for_self=False))
+        rs.update(**self.get_class_settings(for_self=True))
         rs.update(**kwargs)
+        for k,v in rs.iteritems():
+            rs[k] = formatloc(v, rs)
         return rs
     
     def get_needs(self):
@@ -284,7 +312,7 @@ class Soppa(object):
     def __getattr__(self, key):
         try:
             return self.__dict__[key]
-        except:
+        except Exception, e:
             # lazy-load dependencies
             if self.has_need(key):
                 return self.get_and_load_need(self.find_need(key),

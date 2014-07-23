@@ -1,6 +1,6 @@
 from soppa.contrib import *
 
-env.apt_pkgs = DEFAULT_PACKAGES = [
+DEFAULT_PACKAGES = [
 'build-essential',
 'curl',
 'git',

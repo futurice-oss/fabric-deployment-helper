@@ -128,12 +128,14 @@ class Pip(Soppa):
 
 
     def install_python_packages(self):
+        """ Installs Python packages
+        - side-effect: .distlib/ being created to HOME """
         filename = '/tmp/packages_{0}.txt'.format(hashlib.sha256(str(time.time())).hexdigest())
         pkgs = "\n".join(self.all())
         f = self.file.tmpfile(pkgs)
         self.up(f.name, filename)
         with self.virtualenv.activate():
-            self.run(self.fmt('HOME={usedir} pip install'
+            self.run(self.fmt('HOME={packages_to} pip install'
                 ' -f file://{packages_to}'
                 ' -r {filename}'
                 ' --no-index', filename=filename))
