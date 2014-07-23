@@ -2,11 +2,11 @@ from soppa.contrib import *
 from soppa.deploy import DeployFrame
 
 class Nginx(DeployFrame):
-    nginx_dir='/srv/nginx/'
-    nginx_user=env.deploy_user
-    nginx_group=env.deploy_group
-    nginx_restart_command='/etc/init.d/nginx restart'
-    nginx_start_command='/etc/init.d/nginx start'
+    dir='/srv/nginx/'
+    user=env.deploy_user
+    group=env.deploy_group
+    restart_command='/etc/init.d/nginx restart'
+    start_command='/etc/init.d/nginx start'
     needs=[
         'soppa.operating',
         'soppa.template',
@@ -15,7 +15,7 @@ class Nginx(DeployFrame):
     def pre(self):
         if not self.exists('{nginx_dir}sbin/nginx'):
             sctx = self.get_ctx()
-            sctx['nginx_dir'] = self.nginx_dir.rstrip('/')
+            sctx['nginx_dir'] = self.dir.rstrip('/')
             self.up('config/nginx.bash', '/usr/src/')
             with self.cd('/usr/src/'):
                 if self.operating.is_osx():
@@ -40,9 +40,9 @@ class Nginx(DeployFrame):
     @with_settings(warn_only=True)
     def restart(self):
         if self.operating.is_linux():
-            result = self.sudo(self.nginx_restart_command, pty=False)
+            result = self.sudo(self.restart_command, pty=False)
             if result.failed:
-                result = self.sudo(self.nginx_start_command, pty=False)
+                result = self.sudo(self.start_command, pty=False)
         if self.operating.is_osx():
             cmd = 'launchctl unload /Library/LaunchDaemons/nginx.plist '
             result = self.sudo(cmd)

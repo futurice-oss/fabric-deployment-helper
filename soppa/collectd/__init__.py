@@ -1,7 +1,7 @@
 from soppa.contrib import *
 
 class CollectD(Soppa):
-    collectd_from_source=False
+    from_source=False
     packages={
         'apt': ['collectd'],
     }

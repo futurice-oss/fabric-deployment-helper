@@ -1,16 +1,17 @@
 from soppa.deploy import DeployFrame
-
-from soppa.remote import setup_runner
+from pprint import pprint as pp
 
 class PythonDeploy(DeployFrame):
     tarball='/tmp/{release}.tar.gz'
     packages={}
-    needs=[
+    needs=DeployFrame.needs+[
         'soppa.virtualenv',
         'soppa.supervisor',
         'soppa.redis',
         'soppa.pip',
-        'soppa.operating',]
+        'soppa.operating',
+        'soppa.remote',
+        ]
 
     def setup_needs(self):
         super(PythonDeploy, self).setup_needs()
@@ -20,9 +21,9 @@ class PythonDeploy(DeployFrame):
         self.pip.setup()
         self.dirs()
         self.ownership()
-        setup_runner(self.runner_path)
+        self.remote.setup_runner()
 
-        self.usedir = '{basepath}releases/{release}/'
+        self.usedir = self.fmt('{basepath}releases/{release}/')
         if not self.project:
             raise Exception("Define project")
         assert (self.release_time in self.usedir)

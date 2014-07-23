@@ -4,8 +4,8 @@ from soppa.contrib import *
 from soppa.deploy import DeployFrame
 
 class Grafana(DeployFrame):
-    grafana_url='http://grafanarel.s3.amazonaws.com/grafana-1.5.3.tar.gz'
-    grafana_servername='grafana.dev'
+    url='http://grafanarel.s3.amazonaws.com/grafana-1.5.3.tar.gz'
+    servername='grafana.dev'
     needs=DeployFrame.needs+[
         'soppa.package',
         'soppa.template',
@@ -13,7 +13,7 @@ class Grafana(DeployFrame):
     ]
 
     def hook_start(self):
-        self.package.url = self.grafana_url
+        self.package.url = self.url
 
     def hook_post(self):
         # needs=[] have their own env

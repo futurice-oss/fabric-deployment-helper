@@ -3,8 +3,8 @@ import os
 from soppa.contrib import *
 
 class ElasticSearch(Soppa):
-    elasticsearch_url='https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.1.1.tar.gz'
-    elasticsearch_servername='elasticsearch.dev'
+    url='https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.1.1.tar.gz'
+    servername='elasticsearch.dev'
     needs=['soppa.package',]
 
     def setup():
@@ -12,7 +12,7 @@ class ElasticSearch(Soppa):
 
         self.up('config/elasticsearch_nginx.conf', '{nginx.dir}conf/sites-enabled/')
 
-        self.package.setup(env.elasticsearch.url)
+        self.package.setup(self.url)
 
     def health():
         # http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/_cluster_health.html
