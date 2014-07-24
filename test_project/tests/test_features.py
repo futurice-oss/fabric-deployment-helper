@@ -59,6 +59,23 @@ class SoppaTest(BaseSuite):
     def tearDown(self):
         env = self.base
 
+    def test_kwargs_do_not_overwrite_needs(self):
+        p = pip(ctx={'virtualenv':{}})
+        self.assertTrue(p.has_need('virtualenv'))
+        self.assertTrue(p.virtualenv != {})
+
+        env.ctx['virtualenv'] = {'local_conf_path': '/tmp/'}
+        p = pip()
+        self.assertEquals(p.virtualenv.local_conf_path, '/tmp/')
+        v = virtualenv()
+        self.assertEquals(v.local_conf_path, '/tmp/')
+
+    def test_variable_namespacing(self):
+        ctx = {'host': 'localhost.here'}
+        i = graphite(ctx=ctx)
+        self.assertEquals(i.host, ctx['host'])
+        self.assertEquals(i.get_ctx()['graphite_host'], ctx['host'])
+
     def test_mlcd(self):
         base_dir = os.getcwd()
         there = here()

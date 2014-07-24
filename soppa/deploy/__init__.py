@@ -7,6 +7,7 @@ class DeployFrame(Soppa):
     packages={}
     needs=[
         'soppa.file',
+        'soppa.operating',
     ]
 
     def setup(self):
@@ -15,6 +16,7 @@ class DeployFrame(Soppa):
         self.hook_post_start()
 
         self.setup_needs()
+        self.copy_configuration()
 
         self.hook_pre()
         self.pre()
@@ -39,7 +41,8 @@ class DeployFrame(Soppa):
             getattr(instance, 'setup')()
 
     def pre(self):
-        pass
+        self.dirs()
+        self.ownership()
 
     def start(self):
         pass
@@ -48,7 +51,7 @@ class DeployFrame(Soppa):
         pass
 
     def post(self):
-        pass
+        self.ownership()
 
     def end(self):
         pass

@@ -9,7 +9,7 @@ https://github.com/graphite-project/carbon/tree/master/conf
 """
 class Graphite(PythonDeploy):
     path='/opt/graphite/'
-    web_path='{graphite_dir}webapp/graphite/'
+    web_path='{graphite_path}webapp/graphite/'
     host='localhost'
     carbon_path='/opt/graphite/'
     # internal
@@ -18,32 +18,28 @@ class Graphite(PythonDeploy):
         'pip': 'config/requirements.txt',
         'apt': ['libcairo2-dev','python-cairo','pkg-config','libpng3','libpng12-dev', 'libffi-dev'],
     }
-    needs=['soppa.virtualenv',
+    needs=PythonDeploy.needs+[
         'soppa.template',
-        'soppa.pip',
         'soppa.nginx',
-        'soppa.supervisor',
         'soppa.nodejs',
         'soppa.statsd',
-        'soppa.operating',#TODO:inherit Deploy
-        'soppa.redis',#TODO:inherit Deploy
     ]
 
     def hook_pre_config(self):
-        self.sudo('mkdir -p {graphite_dir}')
-        self.sudo('chown -R {deploy_user} {graphite_dir}')
+        self.sudo('mkdir -p {graphite_path}')
+        self.sudo('chown -R {deploy_user} {graphite_path}')
 
-        with self.cd('{graphite_dir}conf/') as b, self.mlcd('config/') as a:
-            self.up('config/carbon.conf', '{graphite_dir}conf/carbon.conf')
-            self.up('config/storage-schemas.conf', '{graphite_dir}conf/storage-schemas.conf')
+        with self.cd('{graphite_path}conf/') as b, self.mlcd('config/') as a:
+            self.up('carbon.conf', '{graphite_path}conf/carbon.conf')
+            self.up('storage-schemas.conf', '{graphite_path}conf/storage-schemas.conf')
             if not self.exists('graphite.wsgi'):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
-        with self.cd('{graphite_dir}webapp/graphite/') as b, self.mlcd('config/') as a:
-            self.up('config/local_settings.py', '{graphite_dir}webapp/graphite/')
+        with self.cd('{graphite_path}webapp/graphite/') as b, self.mlcd('config/') as a:
+            self.up('local_settings.py', '{graphite_path}webapp/graphite/')
             self.sudo('chown {deploy_user} local_settings.py')
 
-        self.up('config/graphite_supervisor.conf', '{supervisor.conf}')
-        self.up('config/graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+        self.up('graphite_supervisor.conf', '{supervisor.conf}')
+        self.up('graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
         args = 'syncdb --noinput'
         with self.virtualenv.activate(), self.cd('{web_path}'):
@@ -57,12 +53,6 @@ class Graphite(PythonDeploy):
         self.sudo("ln -s {0} {1}".format(cairo_path.rstrip('/'), pkg_path.rstrip('/')))
 
         self.sudo('update-rc.d -f carbon remove')#TODO: generalize as factory.init_remove('carbon')
-
-    def hook_pre(self):
-        # Q: run .setup() for everythin in needs?
-        self.nginx.setup()
-        self.nodejs.setup()
-        self.statsd.setup()
 
     def hook_post(self):
         self.nginx.restart()

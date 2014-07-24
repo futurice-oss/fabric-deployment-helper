@@ -1,6 +1,5 @@
 import unittest, copy, os
 from StringIO import StringIO
-from pprint import pprint
 
 from soppa.ingredients import *
 
@@ -11,14 +10,14 @@ class DeployTestCase(BaseSuite):
     def test_hello(self):
         self.assertEquals(1,1)
 
-    def xtest_statsd(self):
+    def test_statsd(self):
         ctx = dict(
             project='statsd',
         )
         g = statsd(ctx=ctx)
         g.setup()
 
-    def xtest_grafana(self):
+    def test_grafana(self):
         ctx = dict(
             project='grafana',
             soppa_is='download'
@@ -26,7 +25,7 @@ class DeployTestCase(BaseSuite):
         g = grafana(ctx=ctx)
         g.setup()
 
-    def xtest_sentry(self):
+    def test_sentry(self):
         env.sentry_servername = 'sentry.dev'
         #db = django().database_env('conf')
         env.ctx = {
@@ -42,10 +41,6 @@ class DeployTestCase(BaseSuite):
 
     def test_graphite(self):
         env.project = 'graphite'
-        c = {
-            'host': 'graphite.dev'
-        }
-        env.ctx['graphite'] = c
         ctx = {
             'project': 'graphite',
             'host': 'graphite.dev',
@@ -53,20 +48,22 @@ class DeployTestCase(BaseSuite):
         instance = graphite(ctx=ctx)
         instance.setup()
 
-    def xtest_nginx(self):
+    def test_nginx(self):
         i = nginx()
         i.setup()
 
-    def xtest_supervisor(self):
+    def test_supervisor(self):
         i = supervisor()
         i.setup()
 
-    def xtest_uwsgi(self):
+    def test_uwsgi(self):
+        env.project = 'uwsgitest'
         i = uwsgi()
         i.setup()
 
 @task
 def run_deployment_tests():
+    from pprint import pprint
     stream = StringIO()
     runner = unittest.TextTestRunner(stream=stream)
     result = runner.run(unittest.makeSuite(DeployTestCase))

@@ -23,6 +23,7 @@ env.deploy_tarball='/tmp/{release}.tar.gz'
 env.user = os.environ.get('USER', None)
 env.owner = 'www-data'
 env.config_dirs = ['config/',]
+env.local_conf_path = 'config/'
 
 env.soppa_is = 'git'
 
@@ -42,6 +43,7 @@ env.branch = 'master'
 env.use_ssh_config = True
 
 env.local_deployment = False
+env.performed = {}
 
 @task
 def soppa_start():

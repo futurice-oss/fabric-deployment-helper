@@ -8,9 +8,9 @@ class ElasticSearch(Soppa):
     needs=['soppa.package',]
 
     def setup():
-        self.up('config/elasticsearch_supervisor.conf', '{supervisor.conf_dir}')
+        self.up('elasticsearch_supervisor.conf', '{supervisor.conf_dir}')
 
-        self.up('config/elasticsearch_nginx.conf', '{nginx.dir}conf/sites-enabled/')
+        self.up('elasticsearch_nginx.conf', '{nginx.dir}conf/sites-enabled/')
 
         self.package.setup(self.url)
 

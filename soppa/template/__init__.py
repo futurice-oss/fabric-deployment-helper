@@ -4,7 +4,6 @@ from soppa.contrib import *
 
 from jinja2 import Template as JinjaTemplate
 
-
 class Template(Soppa):
     def determine_target_filename(self, a, b):
         af = a.split('/')[-1]

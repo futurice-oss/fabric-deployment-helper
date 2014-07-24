@@ -17,7 +17,7 @@ class Grafana(DeployFrame):
 
     def hook_post(self):
         # needs=[] have their own env
-        self.up('config/grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
-        self.up('config/config.js', '{project_root}')
+        self.up('grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+        self.up('config.js', '{project_root}')
 
 grafana_task, grafana = register(Grafana)

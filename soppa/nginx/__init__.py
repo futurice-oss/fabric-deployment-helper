@@ -16,7 +16,7 @@ class Nginx(DeployFrame):
         if not self.exists('{nginx_dir}sbin/nginx'):
             sctx = self.get_ctx()
             sctx['nginx_dir'] = self.dir.rstrip('/')
-            self.up('config/nginx.bash', '/usr/src/')
+            self.up('nginx.bash', '/usr/src/')
             with self.cd('/usr/src/'):
                 if self.operating.is_osx():
                     self.sudo('brew install pcre')
@@ -26,16 +26,18 @@ class Nginx(DeployFrame):
         self.sudo('mkdir -p {nginx_dir}conf/sites-enabled/')
         
         if self.operating.is_linux():
-            self.up('config/init.d/nginx', '/etc/init.d/')
+            self.up('init.d/nginx', '/etc/init.d/')
             self.sudo('chmod 0755 /etc/init.d/nginx')
             self.sudo('chmod +x /etc/init.d/nginx')
             self.sudo('update-rc.d nginx defaults')
         if self.operating.is_osx():
-            self.up('config/LaunchDaemons/nginx.plist', '/Library/LaunchDaemons/')
+            self.up('LaunchDaemons/nginx.plist', '/Library/LaunchDaemons/')
             self.sudo('chmod 0640 /Library/LaunchDaemons/nginx.plist')
             self.sudo('launchctl load /Library/LaunchDaemons/nginx.plist')
             
-        self.up('config/nginx.conf', '{nginx_dir}conf/')
+        if not self.exists('{nginx_dir}conf/mime.types'):
+            self.sudo('cp {nginx_dir}conf/mime.types.default {nginx_dir}conf/mime.types')
+        self.up('nginx.conf', '{nginx_dir}conf/')
 
     @with_settings(warn_only=True)
     def restart(self):

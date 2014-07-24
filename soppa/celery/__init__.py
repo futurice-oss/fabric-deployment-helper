@@ -7,7 +7,7 @@ class Celery(Soppa):
     ]
 
     def hook_post(self):
-        self.up('config/celery_supervisor.conf',
+        self.up('celery_supervisor.conf',
                 '{supervisor.conf_dir}celery_supervisor_{project}.conf')
 
 celery_task, celery = register(Celery)

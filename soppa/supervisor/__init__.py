@@ -28,13 +28,12 @@ class Supervisor(DeployFrame):
         self.sudo('mkdir -p /var/log/supervisor/')
 
         if self.operating.is_linux():
-            self.up('config/init.d/supervisor', '/etc/init.d/')
+            self.up('init.d/supervisor', '/etc/init.d/')
             self.sudo('chmod +x /etc/init.d/supervisor')
             self.sudo('update-rc.d supervisor defaults')
 
     def hook_pre_config(self):
-        sctx = self.get_ctx()
-        self.up('config/supervisord.conf', '/etc/')
+        self.up('supervisord.conf', '/etc/')
 
     def hook_post(self):
         self.restart()
@@ -56,9 +55,11 @@ class Supervisor(DeployFrame):
 
     @with_settings(warn_only=True)
     def restart(self):
-        self.hook_pre_config()#re-upload setings on restart
-        self.stop()
-        self.startcmd()
+        if not self.is_performed(inspect.stack()[0][3]):
+            self.hook_pre_config()#re-upload settings on restart
+            self.stop()
+            self.startcmd()
+        self.set_performed(inspect.stack()[0][3])
 
     @with_settings(warn_only=True)
     def soft_restart(self):

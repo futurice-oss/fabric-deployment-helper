@@ -22,6 +22,7 @@ class Soppa(object):
     needs = []
     packages = {}
     reserved_keys = ['needs','packages','soppa_modules_installed','reserved_keys','pkg',]
+    ignored_internal_variables = ['needs', 'packages']
 
     def __init__(self, *args, **kwargs):
         self.args = args
@@ -55,8 +56,7 @@ class Soppa(object):
         context.update(**kwargs.get('ctx_parent', {}))
 
         # Do not pass internal Soppa variables onward from parent
-        ignored_internal_variables = ['needs', 'packages']
-        for k in ignored_internal_variables:
+        for k in self.ignored_internal_variables:
             if context.get(k):
                 del context[k]
 
@@ -68,8 +68,17 @@ class Soppa(object):
 
         # set initial state based on context
         for k,v in context.iteritems():
-            # TODO: throw exception, if settings a needs=[] var
-            setattr(self, k, v)
+            if not self.has_need(k):
+                setattr(self, k, v)
+
+    def is_performed(self, fn):
+        env.performed.setdefault(env.host_string, {})
+        env.performed[env.host_string].setdefault(fn, False)
+        return env.performed[env.host_string][fn]
+
+    def set_performed(self, fn):
+        self.is_performed(fn)
+        env.performed[env.host_string][fn] = True
 
     def parent_context(self):
         """ Context to pass onto dependencies """
@@ -213,6 +222,30 @@ class Soppa(object):
         caller_path = here(fn=inspect.getfile(sys._getframe(1)))
         upload = Upload(frm, to, instance=self, caller_path=caller_path)
         self.template.up(*upload.args, context=self.get_ctx(**ctx))
+
+    def copy_configuration(self, recurse=False):
+        """ Prepare local copies of module configuration files """
+        if os.path.exists(self.module_conf_path()):
+            self.local('mkdir -p {0}'.format(self.local_module_conf_path()))
+            with settings(warn_only=True):
+                self.local('cp -Rn {0} {1}'.format(
+                    self.module_conf_path(),
+                    self.local_module_conf_path(),))
+        if recurse:
+            for k,v in enumerate(self.get_needs()):
+                v.copy_configuration()
+
+    def module_path(self):
+        return here(instance=self)
+
+    def module_conf_path(self):
+        return '{0}{1}'.format(self.module_path(), self.local_conf_path)
+
+    def local_module_conf_path(self):
+        return '{0}{1}{2}/'.format(
+            env.local_project_root,
+            self.local_conf_path,
+            self.get_name(),)
 
     def setup(self):
         return {}
