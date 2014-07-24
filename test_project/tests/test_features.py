@@ -5,9 +5,9 @@ from soppa.ingredients import *
 from soppa.alias import mlcd
 from soppa.local import aslocal
 
-from .moda import moda
-from .modb import modb
-from .modc import modc
+from ..moda import moda
+from ..modb import modb
+from ..modc import modc
 
 env.TESTING = True
 
@@ -62,9 +62,9 @@ class SoppaTest(BaseSuite):
     def test_mlcd(self):
         base_dir = os.getcwd()
         there = here()
-        with mlcd('../soppa/supervisor/'):
+        with mlcd(os.path.join('../..', 'soppa/supervisor/')):
             self.assertEquals(os.getcwd(), os.path.join(base_dir, 'soppa/supervisor'))
-            self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../soppa/supervisor/')))
+            self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../../soppa/supervisor/')))
 
     def test_scoped_env(self):
         p = pip()
