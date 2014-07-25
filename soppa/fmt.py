@@ -23,7 +23,6 @@ def formatloc(s, ctx={}, **kwargs):
         # adds values to interpolated values with defaults
         if isinstance(s, basestring):
             kw.update(**{k[1]: '' for k in string.Formatter().parse(s) if k[1] and '.' not in k[1]})
-            s = s.replace('{}','{{}}')
             # escape non-ascii matches before .format()
             s = escape_bad_matches(s)
             if '{' not in s:
@@ -45,6 +44,7 @@ def formatloc(s, ctx={}, **kwargs):
                 s = s(kw)
             else:
                 if isinstance(s, basestring):
+                    s = s.replace('{}','{{}}')
                     s = s.format(**kw)
         except IndexError, e:
             print "EE",e

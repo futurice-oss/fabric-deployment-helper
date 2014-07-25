@@ -20,6 +20,11 @@ class Virtualenv(Soppa):
     ]
 
     def setup(self):
+        key_name = 'virtualenv.setup'
+        if self.is_performed(key_name):
+            return
+        self.set_performed(key_name)
+
         self.pip.install_package_global(
                 'virtualenv=={0}'.format(self.version))
 

@@ -22,7 +22,7 @@ class Apt(Soppa):
     }
 
     def packages_updated(self):
-        return env.apt_updated[env.host_string]
+        return env.apt_updated.setdefault(env.host_string, False)
 
     def set_packages_updated(self):
         env.apt_updated.setdefault(env.host_string, True)

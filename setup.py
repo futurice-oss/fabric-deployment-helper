@@ -18,7 +18,9 @@ class TestCommand(Command):
             subprocess.call([sys.executable,
                              '-m',
                              'unittest',
-                             'discover']))
+                             'discover',
+                             '-p',
+                             'test_*.py']))
 
 class InstallCommand(install):
     def run(self):

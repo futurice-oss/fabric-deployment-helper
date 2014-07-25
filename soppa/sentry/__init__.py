@@ -39,13 +39,13 @@ class Sentry(PythonDeploy):
         self.sudo('mkdir -p {www_root}htdocs')
 
         if self.web=='nginx':
-            self.up('config/sentry_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+            self.up('sentry_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
         if self.web=='apache':
-            self.up('config/sentry_apache.conf', '{apache_dir}sites-enabled/')
+            self.up('sentry_apache.conf', '{apache_dir}sites-enabled/')
 
         if self.has_need('supervisor'):
-            self.up('config/sentry_supervisor.conf', '{supervisor.conf}')
+            self.up('sentry_supervisor.conf', '{supervisor.conf}')
 
 
     def hook_pre(self):
@@ -63,7 +63,7 @@ class Sentry(PythonDeploy):
         self.factory.webserver(choice=self.web, action='setup')
 
     def hook_post(self):
-        self.up('config/conf.py', '{usedir}')
+        self.up('conf.py', '{usedir}')
 
         self.factory.webserver(choice=self.web, action='restart')
         self.supervisor.restart()

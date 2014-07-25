@@ -14,8 +14,8 @@ class StatsD(DeployFrame):
                 self.sudo('git clone https://github.com/etsy/statsd.git')
 
     def hook_pre_config(self):
-        self.up('config/exampleConfig.js', '{basepath}statsd/')
-        self.up('config/statsd_supervisor.conf', '{supervisor.conf}')
+        self.up('exampleConfig.js', '{basepath}statsd/')
+        self.up('statsd_supervisor.conf', '{supervisor.conf}')
 
     def stats(self):
         """ stats|counters|timers """

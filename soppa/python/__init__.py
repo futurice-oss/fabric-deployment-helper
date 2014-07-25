@@ -9,7 +9,6 @@ class PythonDeploy(DeployFrame):
         'soppa.supervisor',
         'soppa.redis',
         'soppa.pip',
-        'soppa.operating',
         'soppa.remote',
         ]
 

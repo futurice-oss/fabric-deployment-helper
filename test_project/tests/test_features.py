@@ -5,9 +5,9 @@ from soppa.ingredients import *
 from soppa.alias import mlcd
 from soppa.local import aslocal
 
-from .moda import moda
-from .modb import modb
-from .modc import modc
+from ..moda import moda
+from ..modb import modb
+from ..modc import modc
 
 env.TESTING = True
 
@@ -59,12 +59,29 @@ class SoppaTest(BaseSuite):
     def tearDown(self):
         env = self.base
 
+    def test_kwargs_do_not_overwrite_needs(self):
+        p = pip(ctx={'virtualenv':{}})
+        self.assertTrue(p.has_need('virtualenv'))
+        self.assertTrue(p.virtualenv != {})
+
+        env.ctx['virtualenv'] = {'local_conf_path': '/tmp/'}
+        p = pip()
+        self.assertEquals(p.virtualenv.local_conf_path, '/tmp/')
+        v = virtualenv()
+        self.assertEquals(v.local_conf_path, '/tmp/')
+
+    def test_variable_namespacing(self):
+        ctx = {'host': 'localhost.here'}
+        i = graphite(ctx=ctx)
+        self.assertEquals(i.host, ctx['host'])
+        self.assertEquals(i.get_ctx()['graphite_host'], ctx['host'])
+
     def test_mlcd(self):
         base_dir = os.getcwd()
         there = here()
-        with mlcd('../soppa/supervisor/'):
+        with mlcd(os.path.join('../..', 'soppa/supervisor/')):
             self.assertEquals(os.getcwd(), os.path.join(base_dir, 'soppa/supervisor'))
-            self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../soppa/supervisor/')))
+            self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../../soppa/supervisor/')))
 
     def test_scoped_env(self):
         p = pip()

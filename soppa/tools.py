@@ -36,11 +36,25 @@ def import_string(dotted_path):
 class Upload(object):
     """ Upload a template """
     def __init__(self, frm, to, instance, caller_path):
+        self.instance = instance
         self.env = instance.get_ctx()
         self.args = (frm, to)
         self.caller_path = caller_path
 
         self.up()
+
+    def config_dirs(self):
+        dirs = []
+        dirs.append(os.path.join(self.instance.basedir,
+            self.instance.local_conf_path,
+            self.instance.get_name(), ''))
+        dirs.append(os.path.join(self.env['local_project_root'],
+            self.instance.local_conf_path,
+            self.instance.get_name(), ''))
+        dirs.append(os.path.join(self.instance.module_path(),
+            self.instance.local_conf_path, ''))
+        dirs += self.env['config_dirs']
+        return dirs
 
     def find(self, path, needle):
         matches = []
@@ -51,15 +65,10 @@ class Upload(object):
 
     def choose_template(self):
         filename = self.args[0].split('/')[-1]
-        filepath = '{0}{1}'.format(self.caller_path, self.args[0])
+        filepath = os.path.join(self.caller_path, self.args[0])
         rs = []
-        def wrapper(p):
-            if p.startswith('/'):
-                return p
-            p = os.path.join(self.env['local_project_root'], p)
-            return p
-        for k in self.env['config_dirs']:
-            rs += self.find(wrapper(k), filename)
+        for k in self.config_dirs():
+            rs += self.find(k, filename)
         if rs:
             filepath = '{0}'.format(rs[0])
         return filepath

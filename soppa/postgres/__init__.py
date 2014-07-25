@@ -23,7 +23,7 @@ class Postgres(Soppa):
         with settings(warn_only=True):
             self.sudo('pg_createcluster 9.1 main --start')
 
-        self.up('config/pg_hba.conf', '{path}')
+        self.up('pg_hba.conf', '{path}')
         # TODO: if settings modified, need to restart server
 
         self.sudo('chmod +x /etc/init.d/postgresql')

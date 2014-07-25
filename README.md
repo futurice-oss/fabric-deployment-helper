@@ -20,7 +20,7 @@ def graphite_deploy():
     # Install Graphite as defined in soppa/graphite
     ctx = {
         'project': 'graphite',
-        'graphite_servername': 'graphite.dev',
+        'host': 'graphite.dev',
     }
     i = graphite(ctx=ctx)
     i.setup()
