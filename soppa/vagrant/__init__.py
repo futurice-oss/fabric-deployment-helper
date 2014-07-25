@@ -7,13 +7,14 @@ class Vagrant(Soppa):
         'soppa.file',
     ]
     def guest_ip(self):
-        return self.sudo("""ifconfig -a eth1|grep "inet addr"|awk '{gsub("addr:","",$2); print $2}'""", tkw=dict(raw=True))
+        return self.sudo("""ifconfig -a eth1|grep "inet addr"|awk '{gsub("addr:","",$2); print $2}'""")
 
     def enable_host(self, name):
         """
         Romain forwarding for local development with Vagrant.
         domain (host) -> domain (guest)
         """
+        from soppa.local import aslocal
         self.guest_ip = self.guest_ip()
         self.guest_host_name = name
         # Host (remote) change
