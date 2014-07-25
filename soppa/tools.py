@@ -45,14 +45,14 @@ class Upload(object):
 
     def config_dirs(self):
         dirs = []
-        dirs.append('{0}{1}{2}/'.format(self.instance.basedir,
+        dirs.append(os.path.join(self.instance.basedir,
             self.instance.local_conf_path,
-            self.instance.get_name()))
+            self.instance.get_name(), ''))
         dirs.append(os.path.join(self.env['local_project_root'],
             self.instance.local_conf_path,
-            self.instance.get_name()))
-        dirs.append('{0}{1}'.format(self.instance.module_path(),
-            self.instance.local_conf_path))
+            self.instance.get_name(), ''))
+        dirs.append(os.path.join(self.instance.module_path(),
+            self.instance.local_conf_path, ''))
         dirs += self.env['config_dirs']
         return dirs
 
@@ -65,7 +65,7 @@ class Upload(object):
 
     def choose_template(self):
         filename = self.args[0].split('/')[-1]
-        filepath = '{0}{1}'.format(self.caller_path, self.args[0])
+        filepath = os.path.join(self.caller_path, self.args[0])
         rs = []
         for k in self.config_dirs():
             rs += self.find(k, filename)

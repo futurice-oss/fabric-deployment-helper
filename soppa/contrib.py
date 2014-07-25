@@ -138,7 +138,7 @@ class Soppa(object):
         local_path = getattr(local_path, 'name', local_path)
         if env.local_deployment:
             return self.local_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
-        if env.use_sudo:
+        if env.get('use_sudo'):
             kwargs['use_sudo'] = True
         return fabric_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
 
@@ -173,7 +173,9 @@ class Soppa(object):
         return None
 
     def install_packages(self, recipe):
-        for k,v in recipe.env.get('packages', {}).iteritems():
+        if not hasattr(recipe, 'packages'):
+            return
+        for k,v in recipe.packages.iteritems():
             print "Installing recipe packages",recipe,v
             if k=='pip':
                 if isinstance(v, basestring): # requirements.txt
@@ -239,13 +241,14 @@ class Soppa(object):
         return here(instance=self)
 
     def module_conf_path(self):
-        return '{0}{1}'.format(self.module_path(), self.local_conf_path)
+        return os.path.join(self.module_path(), self.local_conf_path, '')
 
     def local_module_conf_path(self):
-        return '{0}{1}{2}/'.format(
+        return os.path.join(
             env.local_project_root,
             self.local_conf_path,
-            self.get_name(),)
+            self.get_name(),
+            '')
 
     def setup(self):
         return {}

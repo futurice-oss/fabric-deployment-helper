@@ -1,10 +1,32 @@
 import unittest, copy, os
+from pprint import pprint
 from StringIO import StringIO
 
 from soppa.ingredients import *
 
+env.password = ''
+
 class BaseSuite(unittest.TestCase):
     pass
+
+class DjangoDeployTestCase(BaseSuite):
+    def test_mysql(self):
+        ctx = dict(
+            name='db',
+            password='t44t',
+        )
+        s = mysql(ctx=ctx)
+        s.setup()
+
+    def test_django(self):
+        env.ctx['mysql'] = {
+            'password': 't44t',
+        }
+        ctx = dict(
+            project='helloworld',
+        )
+        s = django(ctx=ctx)
+        s.setup()
 
 class DeployTestCase(BaseSuite):
     def test_hello(self):
@@ -63,10 +85,14 @@ class DeployTestCase(BaseSuite):
 
 @task
 def run_deployment_tests():
-    from pprint import pprint
     stream = StringIO()
     runner = unittest.TextTestRunner(stream=stream)
-    result = runner.run(unittest.makeSuite(DeployTestCase))
+    suite = unittest.makeSuite(DjangoDeployTestCase)
+    suite2 = unittest.makeSuite(DeployTestCase)
+    alltests = unittest.TestSuite((
+        suite,
+        suite2,))
+    result = runner.run(alltests)
     print 'Tests run ', result.testsRun
     print 'Errors ', result.errors
     pprint(result.failures)

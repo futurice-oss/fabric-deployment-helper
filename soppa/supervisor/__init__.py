@@ -55,11 +55,12 @@ class Supervisor(DeployFrame):
 
     @with_settings(warn_only=True)
     def restart(self):
-        if not self.is_performed(inspect.stack()[0][3]):
+        key_name = 'supervisor.restart'
+        if not self.is_performed(key_name):
             self.hook_pre_config()#re-upload settings on restart
             self.stop()
             self.startcmd()
-        self.set_performed(inspect.stack()[0][3])
+        self.set_performed(key_name)
 
     @with_settings(warn_only=True)
     def soft_restart(self):

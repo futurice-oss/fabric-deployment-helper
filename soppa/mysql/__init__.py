@@ -39,7 +39,11 @@ class Mysql(Soppa):
     def mysqlcmd(self, cmd, db=''):
         scmd = '; '.join(cmd) + ';'
         mysql_cmd = scmd.format(**self.get_ctx())
-        shcmd = """mysql -uroot -p -e "{0}" {1} """.format(mysql_cmd, db)
+        shcmd = """mysql -u{user} -p{password} -e "{cmd}" {database} """.format(
+                user=self.user,
+                password=self.password,
+                cmd=mysql_cmd,
+                database=db)
         return self.sudo(shcmd)
 
 mysql_task, mysql = register(Mysql)

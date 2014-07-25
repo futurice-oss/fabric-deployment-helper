@@ -3,16 +3,12 @@ from soppa.python import PythonDeploy
 
 class Django(PythonDeploy):
     settings='{project}.settings.prod'
-    needs=[
-        'soppa.virtualenv',
+    needs=PythonDeploy.needs+[
         'soppa.file',
         'soppa.uwsgi',
         'soppa.nginx',
-        'soppa.redis',
         'soppa.mysql',
-        'soppa.supervisor',
         'soppa.nodejs',
-        'soppa.pip',
         'soppa.template',
 
         'soppa.operating',
@@ -51,7 +47,7 @@ class Django(PythonDeploy):
     def check(self):
         with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
             result = self.sudo('env|grep DJANGO_SETTINGS_MODULE')
-            assert self.settings in result
+            assert self.fmt(self.settings) in result
 
     def reset_and_sync(self):
         self.manage('reset_db --router=default --noinput')

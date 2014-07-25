@@ -38,7 +38,12 @@ class DeployFrame(Soppa):
         for key in self.needs:
             name = key.split('.')[-1]
             instance = getattr(self, name)
+
+            key_name = '{0}.setup'.format(name)
+            if self.is_performed(key_name):
+                continue
             getattr(instance, 'setup')()
+            self.set_performed(key_name)
 
     def pre(self):
         self.dirs()
@@ -92,8 +97,8 @@ class DeployFrame(Soppa):
         self.sudo('mkdir -p {basepath}{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}')
 
     def ask_sudo_password(self, capture=False):
-        print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
-        if not env.get('password', None):
+        if env.get('password') is None:
+            print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
             env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
 
     def umask(self, value='002'):
