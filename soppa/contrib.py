@@ -230,9 +230,10 @@ class Soppa(object):
         if os.path.exists(self.module_conf_path()):
             self.local('mkdir -p {0}'.format(self.local_module_conf_path()))
             with settings(warn_only=True):
-                self.local('cp -Rn {0} {1}'.format(
-                    self.module_conf_path(),
-                    self.local_module_conf_path(),))
+                if not self.local_module_conf_path().startswith(self.module_conf_path()):
+                    self.local('cp -Rn {0} {1}'.format(
+                        self.module_conf_path(),
+                        self.local_module_conf_path(),))
         if recurse:
             for k,v in enumerate(self.get_needs()):
                 v.copy_configuration()
