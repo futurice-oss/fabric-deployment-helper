@@ -34,9 +34,6 @@ class Supervisor(DeployFrame):
 
     def hook_pre_config(self):
         self.up('supervisord.conf', '/etc/')
-
-    def hook_post(self):
-        self.restart()
         
     @with_settings(warn_only=True)
     def startcmd(self):

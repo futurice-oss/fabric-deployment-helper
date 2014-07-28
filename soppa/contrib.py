@@ -254,6 +254,9 @@ class Soppa(object):
     def setup(self):
         return {}
 
+    def configure(self):
+        return {}
+
     def get_name(self):
         return self.__class__.__name__.lower()
 
@@ -372,3 +375,36 @@ def register(klass, *args, **kwargs):
 
     return fabric_task, klass
 
+
+class Runner(object):
+    def __init__(self, state={}):
+        self.state = state
+
+    def ask_sudo_password(self, capture=False):
+        if env.get('password') is None:
+            print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
+            env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
+
+    def setup(self, module):
+        self.ask_sudo_password(capture=False)
+
+        needs = module.get_needs()
+
+        self.configure(needs)
+
+        module.setup()
+
+        self.restart(needs)
+
+    def configure(self, needs):
+        print "Configuring"
+        for need in needs:
+            print "Gathering configuration for:",need.get_name()
+            need.configure()
+
+    def restart(self, needs):
+        print "Restarting"
+        for need in needs:
+            if hasattr(need, 'restart'):
+                print "Restarting:",need.get_name()
+                need.restart()

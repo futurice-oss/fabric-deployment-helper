@@ -30,6 +30,8 @@ class Uwsgi(DeployFrame):
         """ touch configs to reload, otherwise start uwsgi """
         self.up('uwsgi.ini', '{basepath}config/vassals/')
         self.sudo('chown -fR {deploy_user} {basepath}config/')
+
+    def restart(self):
         if self.linux.running(r"ps auxww|grep uwsgi|grep [e]mperor"):
             self.cmd_restart()
         else:

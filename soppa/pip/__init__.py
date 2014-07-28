@@ -28,12 +28,12 @@ class Pip(Soppa):
         if not match:
             return None
         package, version, _extension = match.groups()
-        return '{package}=={version}'.format(package=package.lower(), version=version)
+        return '{package}=={version}'.format(package=package, version=version)
 
     def requirementAsPackage(self, line):
         if '#egg=' in line:
             line = re.findall('#egg=(.*)', line)[0]
-        return line.lower()
+        return line
 
     def requirements_as_pkgs(self, requirements_file):
         if not os.path.isfile(requirements_file):
@@ -108,7 +108,12 @@ class Pip(Soppa):
 
     def add(self, name):
         self.packages.setdefault(self.get_namespace(), set())
-        if not self.package_exists(name):
+        if self.package_exists(name):
+            # on dupes, latest wins (TODO: use highest version)
+            pkg_name = name.split('==')[0].lower()
+            self.packages[self.get_namespace()] = set([
+                k for k in self.packages[self.get_namespace()] if pkg_name not in k.lower()])
+        else:
             self.packages[self.get_namespace()].add(name)
 
     def package_exists(self, name):

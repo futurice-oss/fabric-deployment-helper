@@ -33,8 +33,6 @@ class Django(PythonDeploy):
 
     def hook_end(self):
         self.check()
-        self.nginx.restart()
-        self.supervisor.restart()
 
     def hook_post_config(self):
         self.set_dsm(self.settings)

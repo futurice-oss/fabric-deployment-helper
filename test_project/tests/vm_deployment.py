@@ -5,6 +5,7 @@ from StringIO import StringIO
 from soppa.ingredients import *
 
 env.password = ''
+env.mysql_password = os.environ.get('MYSQL_PASS', '')
 
 class BaseSuite(unittest.TestCase):
     pass
@@ -20,13 +21,16 @@ class DjangoDeployTestCase(BaseSuite):
 
     def test_django(self):
         env.ctx['mysql'] = {
-            'password': 't44t',
+            'password': env.mysql_password,
         }
-        ctx = dict(
-            project='helloworld',
+        ctx = {
+            'project':'helloworld',
+        }
+        state = dict(
+                nginx=dict(restart='always'),
         )
-        s = django(ctx=ctx)
-        s.setup()
+        r = Runner(state)
+        r.setup(django(ctx=ctx))
 
 class DeployTestCase(BaseSuite):
     def test_hello(self):
@@ -87,11 +91,11 @@ class DeployTestCase(BaseSuite):
 def run_deployment_tests():
     stream = StringIO()
     runner = unittest.TextTestRunner(stream=stream)
-    suite = unittest.makeSuite(DjangoDeployTestCase)
-    suite2 = unittest.makeSuite(DeployTestCase)
-    alltests = unittest.TestSuite((
-        suite,
-        suite2,))
+    alltests = unittest.TestSuite(
+        tuple(unittest.makeSuite(case) for case in [
+            DjangoDeployTestCase,
+            DeployTestCase,
+    ]))
     result = runner.run(alltests)
     print 'Tests run ', result.testsRun
     print 'Errors ', result.errors
