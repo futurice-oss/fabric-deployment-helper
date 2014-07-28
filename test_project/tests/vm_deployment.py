@@ -14,7 +14,7 @@ class DjangoDeployTestCase(BaseSuite):
     def test_mysql(self):
         ctx = dict(
             name='db',
-            password='t44t',
+            password=env.mysql_password,
         )
         s = mysql(ctx=ctx)
         s.setup()
