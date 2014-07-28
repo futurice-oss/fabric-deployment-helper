@@ -2,10 +2,11 @@ from soppa.contrib import *
 from soppa.deploy import DeployFrame
 
 class StatsD(DeployFrame):
-    needs=[
+    needs=DeployFrame.needs+[
         'soppa.template',
         'soppa.supervisor',
         'soppa.virtualenv',
+        'soppa.nodejs',
     ]
 
     def hook_pre(self):

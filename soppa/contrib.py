@@ -27,6 +27,7 @@ class Soppa(object):
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+        self._CACHE = {}
         # class(dict()) == class(ctx=dict())
         if self.args\
                 and isinstance(self.args[0], dict)\
@@ -164,10 +165,10 @@ class Soppa(object):
             os.chdir(self.fmt('{basedir}'))
 
     def has_need(self, string):
-        return any([string == k.split('.')[-1] for k in self.needs])
+        return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
 
     def find_need(self, string):
-        for k in self.needs:
+        for k in self.get_needs(as_str=True):
             if re.findall(string, k):
                 return k
         return None
@@ -203,7 +204,8 @@ class Soppa(object):
             self.pip.synchronize_python_packages()
 
     def add_need(self, string):
-        """ Add additional 'need' dynamically """
+        if self.find_need(string):
+            return
         self.needs.append(string)
         self.get_and_load_need(string)
 
@@ -307,35 +309,33 @@ class Soppa(object):
             rs[k] = formatloc(v, rs)
         return rs
     
-    def get_needs(self):
-        """ Assigns dependencies to instance, and returns as list """
-        rs = []
-        for k in self.needs:
-            name = k.split('.')[-1]
-            rs.append(getattr(self, name))
-        return rs
+    def get_needs(self, as_str=False):
+        """ Return module dependendies defined in needs=[] and need_* """
+        key = 'get_needs.{0}'.format(as_str)
+        if not self._CACHE.get(key):
+            rs = set()
+            for k in self.needs:
+                name = k.split('.')[-1]
+                if as_str:
+                    rs.add(k)
+                else:
+                    rs.add(getattr(self, name))
+
+            for k,v in self.get_class_settings(for_self=True).iteritems():
+                if k.startswith('need_'):
+                    name = v.split('.')[-1]
+                    if as_str:
+                        rs.add(v)
+                    else:
+                        rs.add(getattr(self, name))
+            self._CACHE[key] = list(rs)
+        return self._CACHE[key]
 
     def settings(self):
         return {}
 
-    def apply_settings(self, action=None):
-        """ package settings are defaults, that globals can override """
-        defaults = self.get_ctx()
-        if defaults.get('required_settings'):
-            if not all([getattr(env, k, False) for k in defaults.required_settings]):
-                raise Exception("Configuration required")
-        if defaults.get('actions'):
-            if not action in defaults.actions:
-                raise Exception("Usage: {0}:{1}".format(self.get_name(), '|'.join(defaults.actions)))
-
     def cli_interface(self, action=None, *args, **kwargs):
         raise Exception("TODO")
-
-    def get_need(self, name):
-        for k in self.needs:
-            if k.endswith(name):
-                return k
-        return None
 
     def get_and_load_need(self, key, *args, **kwargs):
         """ On-demand needs=[] resolve """
@@ -354,7 +354,7 @@ class Soppa(object):
             return self.__dict__[key]
         except Exception, e:
             # lazy-load dependencies
-            if self.has_need(key):
+            if not key.startswith('__') and self.has_need(key):
                 return self.get_and_load_need(self.find_need(key),
                         *self.args,
                         **self.kwargs)
@@ -398,9 +398,11 @@ class Runner(object):
 
     def configure(self, needs):
         print "Configuring"
+        pip_packages = set()
         for need in needs:
             print "Gathering configuration for:",need.get_name()
             need.configure()
+        #self.pip.update_packages(packages=list(pip_packages))
 
     def restart(self, needs):
         print "Restarting"

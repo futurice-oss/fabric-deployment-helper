@@ -12,17 +12,17 @@ class Supervisor(DeployFrame):
     opt='-c "/etc/supervisord.conf"'
     user='{deploy_user}'
 
-    packages={'pip': ['supervisor==3.0']}
-    needs=[
+    version = 'supervisor==3.0'
+    packages={'pip': [version]}
+    needs=DeployFrame.needs+[
         'soppa.pip',
-        'soppa.operating',
         'soppa.template',
         'soppa.virtualenv',
     ]
 
     def pre(self):
-        self.pip.sync_packages()
-        self.pip.install_package_global('supervisor')
+        self.pip.packages_as_local()
+        self.pip.install_package_global(self.version)
 
         self.sudo('mkdir -p /etc/supervisor/conf.d/')
         self.sudo('mkdir -p /var/log/supervisor/')
@@ -52,12 +52,9 @@ class Supervisor(DeployFrame):
 
     @with_settings(warn_only=True)
     def restart(self):
-        key_name = 'supervisor.restart'
-        if not self.is_performed(key_name):
-            self.hook_pre_config()#re-upload settings on restart
-            self.stop()
-            self.startcmd()
-        self.set_performed(key_name)
+        self.hook_pre_config()#re-upload settings on restart
+        self.stop()
+        self.startcmd()
 
     @with_settings(warn_only=True)
     def soft_restart(self):

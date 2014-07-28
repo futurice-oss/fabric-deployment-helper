@@ -97,11 +97,6 @@ class Pip(Soppa):
         for k in requirements:
             self.add(k)
 
-    def prepare_python_packages_from_file(self, requirements=None):
-        use_req_file = self.fmt(requirements or self.requirements)
-        self.prepare_python_packages_from_list(
-                self.requirements_as_pkgs(use_req_file))
-
     # PIPPACKAGE
     def get_namespace(self):
         return hasattr(self, 'project') or '_default_'
@@ -109,7 +104,7 @@ class Pip(Soppa):
     def add(self, name):
         self.packages.setdefault(self.get_namespace(), set())
         if self.package_exists(name):
-            # on dupes, latest wins (TODO: use highest version)
+            # on dupes, latest wins
             pkg_name = name.split('==')[0].lower()
             self.packages[self.get_namespace()] = set([
                 k for k in self.packages[self.get_namespace()] if pkg_name not in k.lower()])
@@ -132,11 +127,12 @@ class Pip(Soppa):
         return set()
 
 
-    def install_python_packages(self):
+    def install_python_packages(self, packages=[]):
         """ Installs Python packages
         - side-effect: .distlib/ being created to HOME """
         filename = '/tmp/packages_{0}.txt'.format(hashlib.sha256(str(time.time())).hexdigest())
-        pkgs = "\n".join(self.all())
+        packages = packages or self.all()
+        pkgs = "\n".join(packages)
         f = self.file.tmpfile(pkgs)
         self.up(f.name, filename)
         with self.virtualenv.activate():
@@ -176,15 +172,16 @@ class Pip(Soppa):
     def system_package_path(self, name):
         return os.path.normpath(self.sudo("python -c 'import {0}; import os; print os.path.dirname({1}.__file__)'".format(name, name)).strip()) + os.sep
 
-    def sync_packages(self):
-        self.prepare_python_packages()
-        self.synchronize_python_packages()
-
-    def update_packages(self, packages=[]):
+    def packages_as_local(self, packages=[]):
+        # local dist/ holding copies of project packages
         self.prepare_python_packages()
         if packages:
             self.prepare_python_packages(packages)
         self.synchronize_python_packages()
+
+    def update_packages(self, packages=[]):
+        # create local copies, setup virtualenv, and install module packages into it
+        self.packages_as_local(packages=packages)
         self.virtualenv.setup()
         self.install_python_packages()
 

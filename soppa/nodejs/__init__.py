@@ -6,8 +6,8 @@ Setup for https://pypi.python.org/pypi/nodeenv
 """
 
 class NodeJS(Soppa):
-    nodejs_version='0.10.26'
-    nodejs_binary_dir='{basepath}venv/bin/'
+    version='0.10.29'
+    binary_dir='{basepath}venv/bin/'
     pkg={
         'pip': 'config/requirements.txt'
     }
@@ -15,6 +15,7 @@ class NodeJS(Soppa):
         'soppa.pip',
         'soppa.virtualenv',
     ]
+    symlink_npm = ['lessc',]
 
     def setup(self):
         with self.virtualenv.activate():
@@ -35,9 +36,8 @@ class NodeJS(Soppa):
         self.symlink_node_binaries()
 
     def symlink_node_binaries(self):
-        global_symlink = ['lessc',]
         with self.cd('{basepath}'):
-            for symlinked_binary in global_symlink:
+            for symlinked_binary in self.symlink_npm:
                 self.sudo(self.fmt('ln -sf $(pwd)/node_modules/.bin/{symlinked_binary} {nodejs_binary_dir}', symlinked_binary=symlinked_binary))
 
 nodejs_task, nodejs = register(NodeJS)

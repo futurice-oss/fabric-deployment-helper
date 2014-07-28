@@ -37,11 +37,9 @@ class DeployTestCase(BaseSuite):
         self.assertEquals(1,1)
 
     def test_statsd(self):
-        ctx = dict(
-            project='statsd',
-        )
-        g = statsd(ctx=ctx)
-        g.setup()
+        env.project='statsd'
+        r = Runner({})
+        r.setup(statsd(ctx={}))
 
     def test_grafana(self):
         ctx = dict(
@@ -52,18 +50,19 @@ class DeployTestCase(BaseSuite):
         g.setup()
 
     def test_sentry(self):
-        env.sentry_servername = 'sentry.dev'
-        #db = django().database_env('conf')
+        env.project = 'sentry'
         env.ctx = {
-            'sentry':
-                {'project': 'sentry',
-                'dbname': 'sentry',
-                'dbuser': 'sentry',
-                'dbpass': 'sentry',
-                },
+            'sentry': {
+                'servername': 'sentry.dev',
+            },
+            'postgres': {
+                'name': 'sentry',
+                'user': 'sentry',
+                'pass': 'sentry',
+            }
         }
-        i = sentry({})
-        i.setup()
+        r = Runner({})
+        r.setup(sentry())
 
     def test_graphite(self):
         env.project = 'graphite'
@@ -92,7 +91,7 @@ def run_deployment_tests():
     stream = StringIO()
     runner = unittest.TextTestRunner(stream=stream)
     alltests = unittest.TestSuite(
-        tuple(unittest.makeSuite(case) for case in [
+        map(unittest.makeSuite, [
             DjangoDeployTestCase,
             DeployTestCase,
     ]))

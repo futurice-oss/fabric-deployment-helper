@@ -17,6 +17,9 @@ class Django(PythonDeploy):
     packages={
         'pip': ['Django==1.6'],
     }
+    need_web = 'soppa.nginx'
+    need_db = 'soppa.mysql'
+    need_wsgi = 'soppa.uwsgi'
 
     def hook_post_start(self):
         self.install_all_packages()
