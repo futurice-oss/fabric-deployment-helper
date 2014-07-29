@@ -31,7 +31,6 @@ from .uwsgi import *
 from .vagrant import *
 from .virtualenv import *
 from .xs import *
-from .factory import *
 
 def print_imports(module):
     d = here(fn=import_string(module).__file__)

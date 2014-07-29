@@ -52,9 +52,6 @@ class Graphite(PythonDeploy):
         self.sudo("rm -f {0}cairo".format(pkg_path))
         self.sudo("ln -s {0} {1}".format(cairo_path.rstrip('/'), pkg_path.rstrip('/')))
 
-        self.sudo('update-rc.d -f carbon remove')#TODO: generalize as factory.init_remove('carbon')
-
-    def hook_post(self):
-        self.nginx.restart()
+        self.sudo('update-rc.d -f carbon remove')#TODO: generalize as OS.init_remove('carbon')
 
 graphite_task, graphite = register(Graphite)

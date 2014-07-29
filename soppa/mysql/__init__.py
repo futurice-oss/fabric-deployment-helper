@@ -8,9 +8,14 @@ class Mysql(Soppa):
         'apt': [
             'mysql-server',
             'libmysqlclient-dev'],
+        'pip': [],
     }
+    with_python_packages = False
+    python_packages = ['MySQL-python==1.2.5']
 
     def setup(self):
+        if self.with_python_packages:
+            self.packages['pip'] += self.python_packages
         self.conf()
 
     def conf(self):

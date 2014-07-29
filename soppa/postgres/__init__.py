@@ -14,10 +14,17 @@ class Postgres(Soppa):
         'soppa.operating',
         'soppa.template',
     ]
+    with_python_packages = False
+    python_packages = ['psycopg2==2.5.2']
 
     def setup(self):
+        if self.with_python_packages:
+            self.packages['pip'] += self.python_packages
+
         if self.operating.is_linux():
             self.install()
+
+            self.rights()
 
     def install(self):
         with settings(warn_only=True):
@@ -30,11 +37,10 @@ class Postgres(Soppa):
         self.sudo('update-rc.d postgresql defaults')
 
     def rights(self):
-        # TODO: postgres.settings() dbname,dbuser not used at all
         if not self.password or not self.user:
             raise Exception('Provide DATABASES settings')
         with settings(warn_only=True):
-            self.sudo("su - postgres -c 'createuser {user} --no-superuser --no-createdb --no-createrole'")
-            self.sudo("su - postgres -c 'createdb {name} -O {user}'")
+            self.sudo("su - postgres -c 'createuser {postgres_user} --no-superuser --no-createdb --no-createrole'")
+            self.sudo("su - postgres -c 'createdb {postgres_name} -O {postgres_user}'")
 
 postgres_task, postgres = register(Postgres)
