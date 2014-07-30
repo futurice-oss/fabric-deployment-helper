@@ -15,7 +15,6 @@ class DeployFrame(Soppa):
         self.hook_post_start()
 
         self.setup_needs()
-        self.copy_configuration()
 
         self.hook_pre()
         self.pre()

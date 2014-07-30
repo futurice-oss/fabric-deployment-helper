@@ -11,7 +11,6 @@ class Graphite(PythonDeploy):
     web_path='{graphite_path}webapp/graphite/'
     host='localhost'
     carbon_path='/opt/graphite/'
-    # internal
     required_settings=['host']
     needs=PythonDeploy.needs+[
         'soppa.template',

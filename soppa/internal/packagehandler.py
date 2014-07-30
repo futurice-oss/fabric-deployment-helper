@@ -2,14 +2,13 @@ import os
 
 class PackageHandler(object):
     """ list of lists [ [name, version] ] of packages """
-    def __init__(self, path, need):
-        self.path = path
+    def __init__(self, need):
         self.register = []
         self.already_added = []
         self.need = need
 
     def exists(self, name):
-        pass
+        return False # TODO
 
     def add(self, name):
         if self.exists(name):
@@ -47,8 +46,8 @@ class PackageHandler(object):
             self.need.local_conf_path,
             self.need.get_name(), '')
 
-    def read(self):
-        target_path = os.path.join(self.defaults_conf_path(), self.path)
+    def read(self, path):
+        target_path = os.path.join(self.defaults_conf_path(), path)
         rs = []
         if not os.path.exists(target_path):
             return rs
@@ -58,6 +57,9 @@ class PackageHandler(object):
                 continue
             rs.append(package)
         return rs
+
+    def requirementName(self, name):
+        return name.split('==')[0]
 
 class AptPackage(PackageHandler):
     pass
@@ -76,9 +78,6 @@ class PipPackage(PackageHandler):
         if '#egg=' in line:
             line = re.findall('#egg=(.*)', line)[0]
         return line.lower()
-
-    def requirementName(self, name):
-        return name.split('==')[0]
 
     def requirementVersion(self, name):
         try:

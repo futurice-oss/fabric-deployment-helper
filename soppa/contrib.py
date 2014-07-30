@@ -232,7 +232,7 @@ class Soppa(object):
         self.template.up(*upload.args, context=self.get_ctx(**ctx))
 
     def copy_configuration(self, recurse=False):
-        """ Prepare local copies of module configuration files """
+        """ Prepare local copies of module configuration files. Does not overwrite existing files. """
         if os.path.exists(self.module_conf_path()):
             self.local('mkdir -p {0}'.format(self.local_module_conf_path()))
             with settings(warn_only=True):
@@ -340,13 +340,34 @@ class Soppa(object):
 
     def get_packages(self):
         rs = {k:[] for k in self.packages.keys()}
-        for need in self.get_needs() + [self]:
+        for need in [self] + self.get_needs():
             for name,path in need.packages.iteritems():
-                handler = self.get_package_handler(name)(path=path, need=need)
-                packages = handler.read()
+                handler = self.get_package_handler(name)(need=need)
+                packages = handler.read(path)
                 if packages:
-                    rs[name].append({need.get_name(): packages})
+                    rs[name].append({need: packages})
         return rs
+
+    def finalize_packages(self, packages):
+        rs = {k:[] for k in self.packages.keys()}
+        for handler_name, load in packages.iteritems():
+            for need, pkg in load[0].iteritems():
+                handler = self.get_package_handler(handler_name)(need=need)
+                existing_package_names = [handler.requirementName(k) for k in rs[handler_name]]
+                for package in pkg:
+                    if handler.requirementName(package) not in existing_package_names:
+                        rs[handler_name].append(package)
+        return rs
+
+    def write_final_packages(self, packages):
+        for handler_name, pkg in packages.iteritems():
+            filepath = os.path.join(self.local_conf_path,
+                    self.get_name(),
+                    self.packages[handler_name])
+            if not os.path.exists(filepath):
+                with open(filepath, "w+") as f:
+                    f.write("\n".join(pkg))
+
 
     def settings(self):
         return {}
@@ -416,13 +437,26 @@ class Runner(object):
     def configure(self, needs):
         print "Configuring"
         pip_packages = set()
+        newProject = False
+        if not os.path.exists(self.local_config_path):
+            newProject = True
+
         for need in needs:
             print "Gathering configuration for:",need.get_name()
             need.configure()
+
+            need.copy_configuration()
+
+        if newProject:
+            raise Exception('Default Configuration generated into config/. Review settings. Next run is live')
+
+        #self.pip.update_packages(packages=list(pip_packages))
+        for need in needs:
+            """
             if need.has_need('pip'):
                 need.pip.packages_as_local()
                 need.pip.install_package_global(self.version)
-        #self.pip.update_packages(packages=list(pip_packages))
+            """
 
     def restart(self, needs):
         print "Restarting"

@@ -16,7 +16,6 @@ class Grafana(DeployFrame):
         self.package.url = self.url
 
     def hook_post(self):
-        # needs=[] have their own env
         self.up('grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
         self.up('config.js', '{project_root}')
 
