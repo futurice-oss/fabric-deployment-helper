@@ -1,18 +1,12 @@
+import hashlib, os, tempfile, re, inspect, sys, time, copy
+
 from soppa.contrib import *
 
-import hashlib
-import os, tempfile, re, inspect, sys, time, copy
-
 class Pip(Soppa):
-    """
-    Packages from packages.pip used as defaults to generate config/MODULE/requirements.txt,
-    which will be the source of packages for installation.
-    """
     requirements='{local_project_root}requirements.txt'
     packages_from='{local_project_root}dist/'
     packages_to='{www_root}dist/'
     extra_index=''
-    # internal
     dirhashes = {}
     needs=[
         'soppa.virtualenv',

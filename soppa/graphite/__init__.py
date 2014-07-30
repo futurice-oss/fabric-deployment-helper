@@ -2,12 +2,11 @@ from soppa.contrib import *
 
 from soppa.python import PythonDeploy
 
-"""
-Graphite by default installs to /opt/graphite/
-Carbon configuration from:
-https://github.com/graphite-project/carbon/tree/master/conf
-"""
 class Graphite(PythonDeploy):
+    """
+    Graphite by default installs to /opt/graphite/
+    Carbon configuration from: https://github.com/graphite-project/carbon/tree/master/conf
+    """
     path='/opt/graphite/'
     web_path='{graphite_path}webapp/graphite/'
     host='localhost'

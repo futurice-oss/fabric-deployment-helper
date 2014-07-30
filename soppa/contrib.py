@@ -17,14 +17,17 @@ env.possible_bugged_strings = []
 env.ctx_failure = []
 
 class Soppa(object):
-    soppa_modules_installed = set()
     needs = []
     packages = {
-            'pip': 'config/requirements_global.txt',
-            'pip.venv': 'config/requirements_venv.txt',
-            'apt': 'config/apt_global.txt',
+            'pip': 'requirements_global.txt',
+            'pip.venv': 'requirements_venv.txt',
+            'apt': 'apt_global.txt',
             }
-    reserved_keys = ['needs','packages','soppa_modules_installed','reserved_keys','pkg',]
+    package_handlers = {
+            'pip': 'soppa.internal.packagehandler.PipPackage',
+            'pip.venv': 'soppa.internal.packagehandler.PipPackage',
+            'apt': 'soppa.internal.packagehandler.AptPackage',}
+    reserved_keys = ['needs','packages','reserved_keys','pkg',]
     ignored_internal_variables = ['needs', 'packages']
 
     def __init__(self, *args, **kwargs):
@@ -37,8 +40,6 @@ class Soppa(object):
                 and len(self.args)==1\
                 and not self.kwargs.get('ctx'):
             self.kwargs['ctx'] = self.args[0]
-
-        Soppa.soppa_modules_installed.add(self.get_name())
 
         # Configuration
         context = LocalDict()
@@ -334,11 +335,17 @@ class Soppa(object):
             self._CACHE[key] = list(rs)
         return self._CACHE[key]
 
+    def get_package_handler(self, name):
+        return import_string(self.package_handlers[name])
+
     def get_packages(self):
         rs = {k:[] for k in self.packages.keys()}
-        for need in self.get_needs():
+        for need in self.get_needs() + [self]:
             for name,path in need.packages.iteritems():
-
+                handler = self.get_package_handler(name)(path=path, need=need)
+                packages = handler.read()
+                if packages:
+                    rs[name].append({need.get_name(): packages})
         return rs
 
     def settings(self):

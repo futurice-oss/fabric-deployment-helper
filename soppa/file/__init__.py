@@ -1,9 +1,8 @@
 import os, sys, time, copy, re, logging
 import inspect, tempfile
+from dirtools import Dir
 
 from soppa.contrib import *
-
-from dirtools import Dir
 
 log = logging.getLogger('soppa')
 
@@ -12,12 +11,7 @@ class File(Soppa):
         return Dir(path).hash()
 
     def set_setting(self, filepath, text, ftype=None, backup=False, su=True):
-        """ add setting 'text' to 'filepath', if not there
-        - when setting bash files, add #START:cmdname ... #END:cmdname, so can reset these settings easily
-
-        if ftype specified, add bounding comments
-        - no need to match given text, can just get boundary, and rewrite all?
-        """
+        """ add setting 'text' to 'filepath', if not there """
         filepath = self.fmt(filepath)
         text = self.fmt(text)
         backup_file = filepath + '.bak'
