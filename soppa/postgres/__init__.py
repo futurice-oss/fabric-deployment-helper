@@ -5,25 +5,14 @@ class Postgres(Soppa):
     name='{project}'
     user=''
     password=''
-    packages={
-        'apt': [
-            'postgresql-9.1',
-            'libpq-dev'],
-    }
     needs=[
         'soppa.operating',
         'soppa.template',
     ]
-    with_python_packages = False
-    python_packages = ['psycopg2==2.5.2']
 
     def setup(self):
-        if self.with_python_packages:
-            self.packages['pip'] += self.python_packages
-
         if self.operating.is_linux():
             self.install()
-
             self.rights()
 
     def install(self):

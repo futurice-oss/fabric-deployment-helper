@@ -1,28 +1,19 @@
 import os
+from contextlib import contextmanager
 
 from soppa.contrib import *
 
-from contextlib import contextmanager
-
-"""
-Setup for http://www.virtualenv.org/en/latest/
-"""
-
 class Virtualenv(Soppa):
+    """
+    Setup for http://www.virtualenv.org/en/latest/
+    """
     path='{www_root}{project}/venv/'
-    version='virtualenv==1.11.4'
     is_active = True
-    packages={
-        'pip': 'config/requirements.txt',
-    }
     needs=[
         'soppa.pip',
     ]
 
     def setup(self):
-        self.pip.packages_as_local(packages=[self.version])
-        self.pip.install_package_global(self.version)
-
         with settings(warn_only=True):
             self.run('[ ! -d {path} ] && rm -rf {path} && '
                  'virtualenv'

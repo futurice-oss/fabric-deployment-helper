@@ -2,7 +2,7 @@ import os, sys, copy, re
 from contextlib import contextmanager
 import inspect
 
-# import and prefix fabric functions to not inadvertedly use them
+# import and prefix fabric functions into their own namespace to not inadvertedly use them
 from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
 from fabric.contrib.files import exists as fabric_exists
 from fabric.context_managers import prefix as fabric_prefix, settings
@@ -17,10 +17,13 @@ env.possible_bugged_strings = []
 env.ctx_failure = []
 
 class Soppa(object):
-    # static
     soppa_modules_installed = set()
     needs = []
-    packages = {}
+    packages = {
+            'pip': 'config/requirements_global.txt',
+            'pip.venv': 'config/requirements_venv.txt',
+            'apt': 'config/apt_global.txt',
+            }
     reserved_keys = ['needs','packages','soppa_modules_installed','reserved_keys','pkg',]
     ignored_internal_variables = ['needs', 'packages']
 
@@ -173,33 +176,33 @@ class Soppa(object):
                 return k
         return None
 
-    def install_packages(self, recipe):
-        if not hasattr(recipe, 'packages'):
-            return
+    def package_configuration(self, recipe):
+        """ Copy default configuration under current project, and download cached copies """
         for k,v in recipe.packages.iteritems():
             print "Installing recipe packages",recipe,v
+            source = here(instance=recipe)
+            rpath = os.path.join(source, v)
             if k=='pip':
-                if isinstance(v, basestring): # requirements.txt
-                    source = here(instance=recipe)
-                    rpath = os.path.join(source, v)
-                    self.pip.prepare_python_packages(rpath)
-                elif isinstance(v, list): # list of packages
-                    self.pip.prepare_python_packages(v)
-                else:
-                    raise Exception("unknown pip listing format")
-            if k=='apt':
+                self.pip.prepare_python_packages(rpath)
+            elif k=='pip.venv':
+                self.pip.prepare_python_packages(rpath)
+            elif k=='apt':
                 if isinstance(v, basestring):
                     v = [v]
                 if not env.TESTING:
                     if self.operating.is_linux():
                         self.apt.update()
                         self.apt.install(v)
+            else:
+                raise Exception("Unknown configuration format")
+
+    def package_configuration_install(self, recipe):
+        pass
 
     def install_all_packages(self):
-        recipe = self
-        self.install_packages(self)
+        self.package_configuration(self)
         for recipe in self.get_needs():
-            self.install_packages(recipe)
+            self.package_configuration(recipe)
         if not self.TESTING:
             self.pip.synchronize_python_packages()
 
@@ -331,6 +334,13 @@ class Soppa(object):
             self._CACHE[key] = list(rs)
         return self._CACHE[key]
 
+    def get_packages(self):
+        rs = {k:[] for k in self.packages.keys()}
+        for need in self.get_needs():
+            for name,path in need.packages.iteritems():
+
+        return rs
+
     def settings(self):
         return {}
 
@@ -402,6 +412,9 @@ class Runner(object):
         for need in needs:
             print "Gathering configuration for:",need.get_name()
             need.configure()
+            if need.has_need('pip'):
+                need.pip.packages_as_local()
+                need.pip.install_package_global(self.version)
         #self.pip.update_packages(packages=list(pip_packages))
 
     def restart(self, needs):

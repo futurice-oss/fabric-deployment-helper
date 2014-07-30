@@ -12,8 +12,6 @@ class Supervisor(DeployFrame):
     opt='-c "/etc/supervisord.conf"'
     user='{deploy_user}'
 
-    version = 'supervisor==3.0'
-    packages={'pip': [version]}
     needs=DeployFrame.needs+[
         'soppa.pip',
         'soppa.template',
@@ -21,9 +19,6 @@ class Supervisor(DeployFrame):
     ]
 
     def pre(self):
-        self.pip.packages_as_local()
-        self.pip.install_package_global(self.version)
-
         self.sudo('mkdir -p /etc/supervisor/conf.d/')
         self.sudo('mkdir -p /var/log/supervisor/')
 
@@ -58,7 +53,7 @@ class Supervisor(DeployFrame):
 
     @with_settings(warn_only=True)
     def soft_restart(self):
-        # restart does not reload configurations?
+        # NOTE: supervisorctl restart does not reload configuration
         self.sudo("supervisorctl {opt} restart all")
 
     def check(self):

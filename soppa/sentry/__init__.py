@@ -17,10 +17,6 @@ class Sentry(PythonDeploy):
             'sentry_servername',
             'need_web',
             'need_db']
-    version = 'Sentry==6.4.4'
-    packages={
-        'pip': [version],
-    }
     needs=PythonDeploy.needs+[
         'soppa.template',
     ]
@@ -35,16 +31,9 @@ class Sentry(PythonDeploy):
             self.up('sentry_apache.conf', '{apache_dir}sites-enabled/')
 
         if self.has_need('supervisor'):
-            self.up('sentry_supervisor.conf', '{supervisor.conf}')
-
-    def hook_pre(self):
-        if self.has_need('mysql'):
-            self.mysql.with_python_packages = True
-        if self.has_need('postgres'):
-            self.postgres.with_python_packages = True
+            self.up('sentry_supervisor.conf', '{supervisor_conf}')
 
     def hook_post(self):
         self.up('conf.py', '{usedir}')
-        self.pip.update_packages(self.packages['pip'])
 
 sentry_task, sentry = register(Sentry)

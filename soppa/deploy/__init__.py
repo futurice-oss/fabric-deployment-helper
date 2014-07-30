@@ -4,7 +4,6 @@ from soppa.contrib import *
 from soppa.local import aslocal
 
 class DeployFrame(Soppa):
-    packages={}
     needs=[
         'soppa.file',
         'soppa.operating',
@@ -27,8 +26,6 @@ class DeployFrame(Soppa):
 
         self.post()
         self.hook_post()
-        with settings(warn_only=True):
-            self.restart_all()
 
         self.end()
         self.hook_end()
@@ -59,9 +56,6 @@ class DeployFrame(Soppa):
         self.ownership()
 
     def end(self):
-        pass
-
-    def restart_all(self):
         pass
 
     ## HOOKS

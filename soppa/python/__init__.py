@@ -3,7 +3,6 @@ from pprint import pprint as pp
 
 class PythonDeploy(DeployFrame):
     tarball='/tmp/{release}.tar.gz'
-    packages={}
     needs=DeployFrame.needs+[
         'soppa.virtualenv',
         'soppa.supervisor',
@@ -12,12 +11,7 @@ class PythonDeploy(DeployFrame):
         'soppa.remote',
         ]
 
-    def setup_needs(self):
-        super(PythonDeploy, self).setup_needs()
-        self.pip.update_packages()
-
     def pre(self):
-        self.pip.setup()
         self.dirs()
         self.ownership()
         self.remote.setup_runner()
@@ -33,7 +27,6 @@ class PythonDeploy(DeployFrame):
     def configure(self):
         self.tar_from_git()
         self.upload_tar()
-        self.pip.update_packages(packages=[])
 
     def post(self):
         self.ownership()

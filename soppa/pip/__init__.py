@@ -4,15 +4,16 @@ import hashlib
 import os, tempfile, re, inspect, sys, time, copy
 
 class Pip(Soppa):
+    """
+    Packages from packages.pip used as defaults to generate config/MODULE/requirements.txt,
+    which will be the source of packages for installation.
+    """
     requirements='{local_project_root}requirements.txt'
     packages_from='{local_project_root}dist/'
     packages_to='{www_root}dist/'
     extra_index=''
     # internal
     dirhashes = {}
-    packages = {
-        'apt': ['python-dev', 'python-setuptools'],
-    }
     needs=[
         'soppa.virtualenv',
         'soppa.file',
@@ -81,10 +82,8 @@ class Pip(Soppa):
     def prepare_python_packages(self, requirements=None):
         # Download python packages (dependencies) into a local folder """
         self.local('mkdir -p {0}'.format(self.packages_from))
-        if isinstance(requirements, list):
-            pass
-        else:
-            use_req_file = self.fmt(requirements or self.requirements)
+        if isinstance(requirements, basestring):
+            use_req_file = self.fmt(requirements)
             requirements = self.requirements_as_pkgs(use_req_file)
         self.prepare_python_packages_from_list(requirements=requirements)
 

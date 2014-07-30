@@ -8,6 +8,7 @@ from soppa.local import aslocal
 from ..moda import moda
 from ..modb import modb
 from ..modc import modc
+from ..modpack import modpack
 
 env.TESTING = True
 
@@ -58,6 +59,10 @@ class SoppaTest(BaseSuite):
 
     def tearDown(self):
         env = self.base
+
+    def test_packages_possibilities(self):
+        m = modpack()
+        self.assertTrue(all(k in ['apt','pip','pip.venv'] for k in m.packages.keys()))
 
     def test_kwargs_do_not_overwrite_needs(self):
         p = pip(ctx={'virtualenv':{}})

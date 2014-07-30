@@ -14,10 +14,6 @@ class Graphite(PythonDeploy):
     carbon_path='/opt/graphite/'
     # internal
     required_settings=['host']
-    packages={
-        'pip': 'config/requirements.txt',
-        'apt': ['libcairo2-dev','python-cairo','pkg-config','libpng3','libpng12-dev', 'libffi-dev'],
-    }
     needs=PythonDeploy.needs+[
         'soppa.template',
         'soppa.nginx',

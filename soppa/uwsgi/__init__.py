@@ -14,16 +14,8 @@ class Uwsgi(DeployFrame):
         'soppa.template',
         'soppa.pip',
     ]
-    packages={
-        'pip': ['uwsgi==2.0.4'],
-    }
-
-    def setup_needs(self):
-        super(Uwsgi, self).setup_needs()
-        self.pip.update_packages(self.packages['pip'])
 
     def hook_pre(self):
-        self.pip.update_packages()
         self.sudo('mkdir -p {basepath}config/vassals')
 
     def hook_post(self):

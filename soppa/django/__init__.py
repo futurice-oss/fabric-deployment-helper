@@ -14,15 +14,11 @@ class Django(PythonDeploy):
         'soppa.operating',
         'soppa.apt',
     ]
-    packages={
-        'pip': ['Django==1.6'],
-    }
+    default_pip_packages = ['Django==1.6']
+    requirements = 'requirements.txt'
     need_web = 'soppa.nginx'
     need_db = 'soppa.mysql'
     need_wsgi = 'soppa.uwsgi'
-
-    def hook_post_start(self):
-        self.install_all_packages()
 
     def hook_post(self):
         with settings(warn_only=True):# assumes assetgen

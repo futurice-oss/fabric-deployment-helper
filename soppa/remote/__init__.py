@@ -49,16 +49,9 @@ class Remote(Soppa):
         with self.file.tmpfile(self.to_json(env_copy, cls=SilentEncoder)) as f:
             self.up(f.name, env.sync_filename)
 
-    def standalone_req(self):
-        """ requires libraries to be in requirements.txt """
-        self.pip.install_package_global('Fabric')
-        self.pip.install_package_global('Jinja2')
-
     def run_cmd_alone(self, cmd):
         """ Run commands defined in local fabfile, on remote server, by copying fabfile and executing command there """
         self.put('fabfile.py', '/tmp/')
-
-        self.standalone_req()
 
         with self.cd('/tmp'):
             self.run('python -c "from fabfile import *; execute({cmd});"'.format(cmd=cmd))
