@@ -19,7 +19,7 @@ class Graphite(PythonDeploy):
         'soppa.statsd',
     ]
 
-    def hook_pre_config(self):
+    def go(self):
         self.sudo('mkdir -p {graphite_path}')
         self.sudo('chown -R {deploy_user} {graphite_path}')
 

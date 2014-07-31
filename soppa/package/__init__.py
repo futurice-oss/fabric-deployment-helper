@@ -2,34 +2,24 @@ from soppa.contrib import *
 
 from soppa.deploy import DeployFrame
 
-
-class Package(Soppa):
-    """ Download packages over HTTP. Tarball only. """
-
-    def start(self):
-        package_pkg = self.package_path(self.url)
+class Package(DeployFrame):
+    def file_as_release(self, url):
+        """ Download a file to be used as a release """
+        package_pkg = self.package_path(url)
         self.dirs()
         if not self.exists(package_pkg):
             with self.cd('{basepath}'):
-                self.run('mkdir -p releases/{release}')
-                self.wget(self.url, package_pkg)
-                if self.package_in_dir(package_pkg, self.package_name(self.url)):
-                    self.sudo("tar --strip-components=1 -zxf {0} -C releases/{1}"\
-                        .format(package_pkg, self.release))
-                else:
-                    self.sudo("tar -zxf {0} -C releases/{1}"\
-                        .format(package_pkg, '{release}'))
-        if not self.release_exists():
-            self.release = self.latest_release()
-
+                self.wget(url, package_pkg)
+        with self.cd('{basepath}'):
+            self.run('mkdir -p releases/{release}')
+            if self.package_in_dir(package_pkg, self.package_name(url)):
+                self.sudo("tar --strip-components=1 -zxf {0} -C releases/{1}"\
+                    .format(package_pkg, self.release))
+            else:
+                self.sudo("tar -zxf {0} -C releases/{1}"\
+                    .format(package_pkg, '{release}'))
         self.ownership()
         self.symlink_release()
-
-    def release_exists(self):
-        return self.exists('{basepath}releases/{release}')
-
-    def latest_release(self):
-        return self.sudo("cd {basepath}releases/ && ls -t|head -1").strip()
 
     def dummy(self, name=None):# for testing
         return name
@@ -58,6 +48,6 @@ class Package(Soppa):
         with self.cd('{basepath}'):
             self.run('mkdir -p releases/{release}')
             self.run('tar zxf packages/{release}.tar.gz -C releases/{release}')
-        self.local('rm {pkg}')
+        self.local('rm {deploy_tarball}')
 
 package_task, package = register(Package)

@@ -15,11 +15,9 @@ class Uwsgi(DeployFrame):
         'soppa.pip',
     ]
 
-    def hook_pre(self):
-        self.sudo('mkdir -p {basepath}config/vassals')
-
-    def hook_post(self):
+    def go(self):
         """ touch configs to reload, otherwise start uwsgi """
+        self.sudo('mkdir -p {basepath}config/vassals')
         self.up('uwsgi.ini', '{basepath}config/vassals/')
         self.sudo('chown -fR {deploy_user} {basepath}config/')
 
@@ -34,7 +32,7 @@ class Uwsgi(DeployFrame):
             self.sudo("find . -maxdepth 1 -mindepth 1 -type f -exec touch {} \+")
 
     def cmd_start(self):
-        with self.virtualenv.activate() as a:
+        with self.virtualenv.activate():
             self.sudo('uwsgi --emperor {basepath}config/vassals --uid {deploy_user} --gid {deploy_group} --daemonize {basepath}logs/{project}-emperor.log')
 
 uwsgi_task, uwsgi = register(Uwsgi)

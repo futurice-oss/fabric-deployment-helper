@@ -1,6 +1,6 @@
 import os, sys, copy, re
 from contextlib import contextmanager
-import inspect
+import inspect, getpass
 
 # import and prefix fabric functions into their own namespace to not inadvertedly use them
 from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
@@ -16,7 +16,75 @@ from soppa.tools import import_string, Upload, LocalDict
 env.possible_bugged_strings = []
 env.ctx_failure = []
 
-class Soppa(object):
+class ApiMixin(object):
+    # Fabric API
+    def hide(self, *groups):
+        return fabric_hide(*groups)
+
+    def sudo(self, command, *args, **kwargs):
+        if env.local_deployment:
+            return self.local_sudo(command, *args, **kwargs)
+        return fabric_sudo(self.fmt(command), *args, **kwargs)
+
+    def run(self, command, **kwargs):
+        if env.local_deployment:
+            return self.local(command, **kwargs)
+        if kwargs.get('use_sudo'):
+            return self.sudo(command, **kwargs)
+        else:
+            return fabric_run(self.fmt(command), **kwargs)
+
+    def local(self, command, capture=False, shell=None):
+        return fabric_local(self.fmt(command), capture=capture, shell=shell)
+
+    def put(self, local_path, remote_path, **kwargs):
+        local_path = getattr(local_path, 'name', local_path)
+        if env.local_deployment:
+            return self.local_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
+        if env.get('use_sudo'):
+            kwargs['use_sudo'] = True
+        return fabric_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
+
+    # NOTE: get collides with Python dictionaries
+    def get_file(self, remote_path, local_path, **kwargs):
+        local_path = getattr(local_path, 'name', local_path)
+        if env.local_deployment:
+            return self.local_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
+        if env.get('use_sudo'):
+            kwargs['use_sudo'] = True
+        return fabric_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
+
+    def cd(self, path):
+        return fabric_cd(self.fmt(path))
+
+    def prefix(self, command):
+        return fabric_prefix(self.fmt(command))
+
+    def exists(self, path, use_sudo=False, verbose=False):
+        return fabric_exists(self.fmt(path), use_sudo=use_sudo, verbose=verbose)
+    # END Fabric API
+
+class DeployMixin(ApiMixin):
+    def setup_needs(self):
+        for instance in self.get_needs():
+            key_name = '{0}.setup'.format(instance.get_name())
+            if self.is_performed(key_name):
+                continue
+            getattr(instance, 'setup')()
+            self.set_performed(key_name)
+
+    def ownership(self):
+        self.sudo('chown -fR {owner} {basepath}')
+
+    def dirs(self):
+        self.sudo('mkdir -p {www_root}dist/')
+        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
+        self.run('mkdir -p {release_path}')
+        if not self.exists('{basepath}www/'):
+            with self.cd('{basepath}'):
+                self.run('ln -s {releases}default/ www.new; mv -T www.new www')
+
+class Soppa(DeployMixin):
     needs = []
     packages = {
             'pip': 'requirements_global.txt',
@@ -110,53 +178,6 @@ class Soppa(object):
         return self.local('cp {0} {1}'.format(local_path, remote_path), **kw)
     local_get = local_put
 
-    # Fabric API
-    def hide(self, *groups):
-        return fabric_hide(*groups)
-
-    def sudo(self, command, *args, **kwargs):
-        if env.local_deployment:
-            return self.local_sudo(command, *args, **kwargs)
-        return fabric_sudo(self.fmt(command), *args, **kwargs)
-
-    def run(self, command, **kwargs):
-        if env.local_deployment:
-            return self.local(command, **kwargs)
-        if kwargs.get('use_sudo'):
-            return self.sudo(command, **kwargs)
-        else:
-            return fabric_run(self.fmt(command), **kwargs)
-
-    def local(self, command, capture=False, shell=None):
-        return fabric_local(self.fmt(command), capture=capture, shell=shell)
-
-    def put(self, local_path, remote_path, **kwargs):
-        local_path = getattr(local_path, 'name', local_path)
-        if env.local_deployment:
-            return self.local_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
-        if env.get('use_sudo'):
-            kwargs['use_sudo'] = True
-        return fabric_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
-
-    # NOTE: get collides with Python dictionaries
-    def get_file(self, remote_path, local_path, **kwargs):
-        local_path = getattr(local_path, 'name', local_path)
-        if env.local_deployment:
-            return self.local_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
-        if env.get('use_sudo'):
-            kwargs['use_sudo'] = True
-        return fabric_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
-
-    def cd(self, path):
-        return fabric_cd(self.fmt(path))
-
-    def prefix(self, command):
-        return fabric_prefix(self.fmt(command))
-
-    def exists(self, path, use_sudo=False, verbose=False):
-        return fabric_exists(self.fmt(path), use_sudo=use_sudo, verbose=verbose)
-    
-    # END Fabric API
 
     @contextmanager
     def mlcd(self, path):
@@ -235,7 +256,7 @@ class Soppa(object):
         """ Prepare local copies of module configuration files. Does not overwrite existing files. """
         if os.path.exists(self.module_conf_path()):
             self.local('mkdir -p {0}'.format(self.local_module_conf_path()))
-            with settings(warn_only=True):
+            with self.hide('output','warnings'), settings(warn_only=True):
                 if not self.local_module_conf_path().startswith(self.module_conf_path()):
                     self.local('cp -Rn {0} {1}'.format(
                         self.module_conf_path(),
@@ -303,8 +324,7 @@ class Soppa(object):
     def get_ctx(self, **kwargs):
         """ Gather and evaluate variables for context """
         rs = LocalDict()
-        needs = self.get_needs()
-        for k,v in enumerate(needs):
+        for k,v in enumerate(self.get_needs()):
             rs.update(**v.get_class_settings())
         rs.update(**self.get_class_settings(for_self=False))
         rs.update(**self.get_class_settings(for_self=True))
@@ -387,6 +407,15 @@ class Soppa(object):
 
         return instance
 
+    def release_exists(self):
+        return self.exists('{basepath}releases/{release}')
+
+    def latest_release(self):
+        rel = self.sudo("cd {basepath} && readlink www").strip()
+        if rel:
+            return rel.replace('releases/', '')
+        return env.release
+
     def __getattr__(self, key):
         try:
             return self.__dict__[key]
@@ -414,9 +443,13 @@ def register(klass, *args, **kwargs):
     return fabric_task, klass
 
 
-class Runner(object):
+class Runner(DeployMixin):
+    """ alias Deploy """
     def __init__(self, state={}):
         self.state = state
+
+    def fmt(self, val, *args, **kwargs):
+        return formatloc(val, env)
 
     def ask_sudo_password(self, capture=False):
         if env.get('password') is None:
@@ -426,19 +459,21 @@ class Runner(object):
     def setup(self, module):
         self.ask_sudo_password(capture=False)
 
-        needs = module.get_needs()
+        if env.project:
+            self.dirs()
+        self.ownership()
 
-        self.configure(needs)
+        needs = module.get_needs()
+        self.configure([module] + needs)
 
         module.setup()
 
         self.restart(needs)
 
     def configure(self, needs):
-        print "Configuring"
         pip_packages = set()
         newProject = False
-        if not os.path.exists(self.local_config_path):
+        if not os.path.exists(env.local_conf_path):
             newProject = True
 
         for need in needs:
@@ -447,10 +482,11 @@ class Runner(object):
 
             need.copy_configuration()
 
-        if newProject:
-            raise Exception('Default Configuration generated into config/. Review settings. Next run is live')
+            need.setup_needs()
 
-        #self.pip.update_packages(packages=list(pip_packages))
+        if newProject:
+            raise Exception('Default Configuration generated into config/. Review settings and configure any changes. Next run is live')
+
         for need in needs:
             """
             if need.has_need('pip'):
@@ -459,7 +495,6 @@ class Runner(object):
             """
 
     def restart(self, needs):
-        print "Restarting"
         for need in needs:
             if hasattr(need, 'restart'):
                 print "Restarting:",need.get_name()

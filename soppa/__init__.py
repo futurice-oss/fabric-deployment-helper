@@ -25,18 +25,13 @@ env.owner = 'www-data'
 env.config_dirs = ['config/',]
 env.local_conf_path = 'config/'
 
-env.soppa_is = 'git'
-
-env.release_time = time.strftime('%Y%m%d%H%M%S')
-env.pkg = '/tmp/{release}.tar.gz'
-env.release = '{release_time}'
-env.release_symlink_path = 'releases/{release}'
-
 env.project = None # set in fabfile *only*
 env.www_root = '/srv/www/'
 env.basepath = '{www_root}{project}/'
 env.project_root = '{www_root}{project}/www/'
-env.usedir = '{project_root}'
+
+env.release = time.strftime('%Y%m%d%H%M%S')
+env.release_path = '{basepath}releases/{release}/'
 
 env.branch = 'master'
 

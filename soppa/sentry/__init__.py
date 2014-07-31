@@ -21,7 +21,7 @@ class Sentry(PythonDeploy):
         'soppa.template',
     ]
 
-    def hook_pre_config(self):
+    def go(self):
         self.sudo('mkdir -p {www_root}htdocs')
 
         if self.has_need('nginx'):
@@ -33,7 +33,6 @@ class Sentry(PythonDeploy):
         if self.has_need('supervisor'):
             self.up('sentry_supervisor.conf', '{supervisor_conf}')
 
-    def hook_post(self):
-        self.up('conf.py', '{usedir}')
+        self.up('conf.py', '{release_path}')
 
 sentry_task, sentry = register(Sentry)

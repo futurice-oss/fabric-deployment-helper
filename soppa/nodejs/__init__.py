@@ -17,9 +17,10 @@ class NodeJS(Soppa):
             self.sudo('[ -f "{nodejs_binary_dir}node" ] || nodeenv -p --node={nodejs_version}')
 
         with self.virtualenv.activate():
+            # TODO: config/MODULE/package.json, packages.npm
             with settings(warn_only=True):
-                with self.cd('{usedir}'):
-                    self.sudo('cp {usedir}package.json {basepath}')
+                with self.cd('{release_path}'):
+                    self.sudo('cp {release_path}package.json {basepath}')
                     self.sudo('ln -sf {basepath}node_modules .')
             with settings(warn_only=True):
                 with self.cd('{basepath}'):

@@ -13,19 +13,18 @@ class Postgres(Soppa):
     def setup(self):
         if self.operating.is_linux():
             self.install()
-            self.rights()
+            self.create_database()
 
     def install(self):
-        with settings(warn_only=True):
+        with settings(warn_only=True), self.hide('warnings'):
             self.sudo('pg_createcluster 9.1 main --start')
 
         self.up('pg_hba.conf', '{path}')
-        # TODO: if settings modified, need to restart server
 
         self.sudo('chmod +x /etc/init.d/postgresql')
         self.sudo('update-rc.d postgresql defaults')
 
-    def rights(self):
+    def create_database(self):
         if not self.password or not self.user:
             raise Exception('Provide DATABASES settings')
         with settings(warn_only=True):

@@ -12,17 +12,7 @@ class Nginx(DeployFrame):
         'soppa.template',
     ]
 
-    def pre(self):
-        if not self.exists('{nginx_dir}sbin/nginx'):
-            sctx = self.get_ctx()
-            sctx['nginx_dir'] = self.dir.rstrip('/')
-            self.up('nginx.bash', '/usr/src/')
-            with self.cd('/usr/src/'):
-                if self.operating.is_osx():
-                    self.sudo('brew install pcre')
-                self.sudo('bash nginx.bash')
-
-    def hook_pre_config(self):
+    def go(self):
         self.sudo('mkdir -p {nginx_dir}conf/sites-enabled/')
         
         if self.operating.is_linux():
@@ -38,6 +28,15 @@ class Nginx(DeployFrame):
         if not self.exists('{nginx_dir}conf/mime.types'):
             self.sudo('cp {nginx_dir}conf/mime.types.default {nginx_dir}conf/mime.types')
         self.up('nginx.conf', '{nginx_dir}conf/')
+
+        if not self.exists('{nginx_dir}sbin/nginx'):
+            sctx = self.get_ctx()
+            sctx['nginx_dir'] = self.dir.rstrip('/')
+            self.up('nginx.bash', '/usr/src/')
+            with self.cd('/usr/src/'):
+                if self.operating.is_osx():
+                    self.sudo('brew install pcre')
+                self.sudo('bash nginx.bash')
 
     @with_settings(warn_only=True)
     def restart(self):

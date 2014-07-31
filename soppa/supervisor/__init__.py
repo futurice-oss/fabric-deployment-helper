@@ -18,7 +18,7 @@ class Supervisor(DeployFrame):
         'soppa.virtualenv',
     ]
 
-    def pre(self):
+    def go(self):
         self.sudo('mkdir -p /etc/supervisor/conf.d/')
         self.sudo('mkdir -p /var/log/supervisor/')
 
@@ -27,7 +27,6 @@ class Supervisor(DeployFrame):
             self.sudo('chmod +x /etc/init.d/supervisor')
             self.sudo('update-rc.d supervisor defaults')
 
-    def hook_pre_config(self):
         self.up('supervisord.conf', '/etc/')
         
     @with_settings(warn_only=True)
@@ -47,7 +46,7 @@ class Supervisor(DeployFrame):
 
     @with_settings(warn_only=True)
     def restart(self):
-        self.hook_pre_config()#re-upload settings on restart
+        self.pre()#re-upload settings on restart
         self.stop()
         self.startcmd()
 

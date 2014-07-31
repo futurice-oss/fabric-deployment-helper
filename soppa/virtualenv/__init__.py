@@ -14,6 +14,8 @@ class Virtualenv(Soppa):
     ]
 
     def setup(self):
+        if self.project is None:
+            return
         with settings(warn_only=True):
             self.run('[ ! -d {path} ] && rm -rf {path} && '
                  'virtualenv'

@@ -9,12 +9,10 @@ class StatsD(DeployFrame):
         'soppa.nodejs',
     ]
 
-    def hook_pre(self):
+    def go(self):
         if not self.exists('{basepath}statsd'):
             with self.cd('{basepath}'):
                 self.sudo('git clone https://github.com/etsy/statsd.git')
-
-    def hook_pre_config(self):
         self.up('exampleConfig.js', '{basepath}statsd/')
         self.up('statsd_supervisor.conf', '{supervisor.conf}')
 

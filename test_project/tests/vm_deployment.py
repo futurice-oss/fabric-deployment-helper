@@ -43,8 +43,7 @@ class DeployTestCase(BaseSuite):
 
     def test_grafana(self):
         ctx = dict(
-            project='grafana',
-            soppa_is='download'
+            project='grafana'
         )
         g = grafana(ctx=ctx)
         g.setup()
@@ -58,10 +57,10 @@ class DeployTestCase(BaseSuite):
             'postgres': {
                 'name': 'sentry',
                 'user': 'sentry',
-                'pass': 'sentry',
+                'password': 'sentry',
             }
         }
-        r = Runner({})
+        r = Runner()
         r.setup(sentry())
 
     def test_graphite(self):

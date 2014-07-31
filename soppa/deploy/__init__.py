@@ -29,21 +29,8 @@ class DeployFrame(Soppa):
         self.end()
         self.hook_end()
 
-    def setup_needs(self):
-        instances = []
-        for key in self.needs:
-            name = key.split('.')[-1]
-            instance = getattr(self, name)
-
-            key_name = '{0}.setup'.format(name)
-            if self.is_performed(key_name):
-                continue
-            getattr(instance, 'setup')()
-            self.set_performed(key_name)
-
     def pre(self):
-        self.dirs()
-        self.ownership()
+        self.go()
 
     def start(self):
         pass
@@ -82,12 +69,8 @@ class DeployFrame(Soppa):
 
     ## END HOOKS
 
-    def ownership(self):
-        self.sudo('chown -fR {owner} {basepath}')
-
-    def dirs(self):
-        self.sudo('mkdir -p {www_root}dist/')
-        self.sudo('mkdir -p {basepath}{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}')
+    def go(self):
+        return True
 
     def ask_sudo_password(self, capture=False):
         if env.get('password') is None:
@@ -100,7 +83,6 @@ class DeployFrame(Soppa):
     def upload_tar(self):
         self.put('{deploy_tarball}', '{basepath}packages/')
         with self.cd(self.basepath):
-            self.run('mkdir -p releases/{release}')
             self.run('tar zxf packages/{release}.tar.gz -C releases/{release}')
         self.local('rm {deploy_tarball}')
 
@@ -108,15 +90,15 @@ class DeployFrame(Soppa):
         self.local('git archive --format=tar {branch} | gzip > {deploy_tarball}')
 
     def symlink_exists(self):
-        return self.exists('{release_symlink_path}')
+        return self.exists('{release_path}')
 
-    def symlink_release(self, path=None):
+    def symlink_release(self):
         """ mv is atomic op on unix; allows seamless deploy """
         with self.cd(env.basepath):
             if self.operating.is_linux():
-                self.run('ln -s {release_symlink_path} www.new; mv -T www.new www')
+                self.run('ln -s {release_path} www.new; mv -T www.new www')
             else:
-                self.run('rm -f www && ln -sf {release_symlink_path} www')
+                self.run('rm -f www && ln -sf {release_path} www')
 
     def password_prompt(self):
         if not env.password:

@@ -12,17 +12,8 @@ class PythonDeploy(DeployFrame):
         ]
 
     def pre(self):
-        self.dirs()
-        self.ownership()
+        self.go()
         self.remote.setup_runner()
-
-        self.usedir = self.fmt('{basepath}releases/{release}/')
-        if not self.project:
-            raise Exception("Define project")
-        assert (self.release_time in self.usedir)
-
-    def start(self):
-        self.ask_sudo_password(capture=False)
 
     def configure(self):
         self.tar_from_git()

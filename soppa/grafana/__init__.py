@@ -12,10 +12,8 @@ class Grafana(DeployFrame):
         'soppa.nginx',
     ]
 
-    def hook_start(self):
-        self.package.url = self.url
-
-    def hook_post(self):
+    def go(self):
+        self.package.file_as_release(self.url)
         self.up('grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
         self.up('config.js', '{project_root}')
 

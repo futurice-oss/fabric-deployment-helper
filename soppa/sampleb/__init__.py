@@ -4,10 +4,7 @@ from soppa.deploy import DeployFrame
 class SampleB(DeployFrame):
     needs = ['soppa.template',]
 
-    def hook_pre(self):
-        print "conf.projectB:",self.project
-
-    def pre(self):
+    def go(self):
         print "setup.projectB:",self.project
         self.up('config/config.js', '/tmp/{project}.js')
 

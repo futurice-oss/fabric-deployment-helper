@@ -14,13 +14,14 @@ class Django(PythonDeploy):
         'soppa.operating',
         'soppa.apt',
     ]
-    default_pip_packages = ['Django==1.6']
     requirements = 'requirements.txt'
     need_web = 'soppa.nginx'
     need_db = 'soppa.mysql'
     need_wsgi = 'soppa.uwsgi'
 
     def hook_post(self):
+        self.set_dsm(self.settings)
+
         with settings(warn_only=True):# assumes assetgen
             self.prepare_assets()
 
@@ -30,19 +31,15 @@ class Django(PythonDeploy):
         with settings(warn_only=True):
             self.manage('migrate --noinput')# assumes South/django 1.7
 
-    def hook_end(self):
         self.check()
-
-    def hook_post_config(self):
-        self.set_dsm(self.settings)
 
     def set_dsm(self, dsm):
         self.file.set_setting(
-                self.fmt('{virtualenv.path}bin/activate'),
+                self.fmt('{virtualenv_path}bin/activate'),
                 self.fmt('export DJANGO_SETTINGS_MODULE={dsm}', dsm=dsm))
 
     def check(self):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
+        with self.virtualenv.activate() as a, self.cd(self.release_path) as b:
             result = self.sudo('env|grep DJANGO_SETTINGS_MODULE')
             assert self.fmt(self.settings) in result
 
@@ -51,16 +48,16 @@ class Django(PythonDeploy):
         self.manage('syncdb --noinput')
 
     def prepare_assets(self):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
-            self.sudo('assetgen --profile prod assetgen.yaml --force && cp -r {usedir}static/* {basepath}static/')
+        with self.virtualenv.activate() as a, self.cd(self.release_path) as b:
+            self.sudo('assetgen --profile prod assetgen.yaml --force && cp -r {release_path}static/* {basepath}static/')
         self.manage('collectstatic --noinput')
 
     def manage(self, args, standalone=False):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
+        with self.virtualenv.activate() as a, self.cd(self.release_path) as b:
             return self.sudo('python manage.py {args}'.format(args=args))
 
     def admin(self, args, standalone=False):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
+        with self.virtualenv.activate() as a, self.cd(self.release_path) as b:
             return self.run('django-admin.py {args}'.format(args=args))
 
     def database_env(self, django_settings=None):

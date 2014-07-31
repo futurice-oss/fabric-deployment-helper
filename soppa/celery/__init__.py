@@ -6,7 +6,7 @@ class Celery(Soppa):
         'soppa.supervisor',
     ]
 
-    def hook_post(self):
+    def go(self):
         self.up('celery_supervisor.conf',
                 '{supervisor.conf_dir}celery_supervisor_{project}.conf')
 
