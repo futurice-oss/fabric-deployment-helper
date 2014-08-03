@@ -16,21 +16,29 @@ class DjangoDeployTestCase(BaseSuite):
             name='db',
             password=env.mysql_password,
         )
-        s = mysql(ctx=ctx)
-        s.setup()
+        state = {}
+        r = Runner(state)
+        r.setup(mysql(ctx=ctx))
 
     def test_django(self):
         env.ctx['mysql'] = {
             'password': env.mysql_password,
         }
-        ctx = {
-            'project':'helloworld',
-        }
+        env.project = 'helloworld'
+        ctx = {}
         state = dict(
-                nginx=dict(restart='always'),
+            nginx=dict(restart='always'),
         )
         r = Runner(state)
         r.setup(django(ctx=ctx))
+
+    def test_graphite(self):
+        env.project = 'graphite'
+        ctx = {
+            'host': 'graphite.dev',
+        }
+        r = Runner()
+        r.setup(graphite(ctx=ctx))
 
 class DeployTestCase(BaseSuite):
     def test_hello(self):
@@ -38,15 +46,15 @@ class DeployTestCase(BaseSuite):
 
     def test_statsd(self):
         env.project='statsd'
-        r = Runner({})
-        r.setup(statsd(ctx={}))
+        r = Runner()
+        r.setup(statsd())
 
     def test_grafana(self):
         ctx = dict(
             project='grafana'
         )
-        g = grafana(ctx=ctx)
-        g.setup()
+        r = Runner()
+        r.setup(grafana(ctx=ctx))
 
     def test_sentry(self):
         env.project = 'sentry'
@@ -63,27 +71,18 @@ class DeployTestCase(BaseSuite):
         r = Runner()
         r.setup(sentry())
 
-    def test_graphite(self):
-        env.project = 'graphite'
-        ctx = {
-            'project': 'graphite',
-            'host': 'graphite.dev',
-        }
-        instance = graphite(ctx=ctx)
-        instance.setup()
-
     def test_nginx(self):
-        i = nginx()
-        i.setup()
+        r = Runner()
+        r.setup(nginx())
 
     def test_supervisor(self):
-        i = supervisor()
-        i.setup()
+        r = Runner()
+        r.setup(supervisor())
 
     def test_uwsgi(self):
         env.project = 'uwsgitest'
-        i = uwsgi()
-        i.setup()
+        r = Runner()
+        r.setup(uwsgi())
 
 @task
 def run_deployment_tests():
@@ -96,7 +95,7 @@ def run_deployment_tests():
     ]))
     result = runner.run(alltests)
     print 'Tests run ', result.testsRun
-    print 'Errors ', result.errors
+    pprint(result.errors)
     pprint(result.failures)
     stream.seek(0)
     print 'Test output\n', stream.read()

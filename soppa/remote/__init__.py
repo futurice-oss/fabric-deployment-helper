@@ -32,8 +32,7 @@ class Remote(Soppa):
 
     def setup_runner(self, runner_path=None):
         runner_path = runner_path or self.runner_path
-        with mlcd('.'):
-            self.up('runner.py', runner_path)
+        self.up('runner.py', runner_path)
         self.sudo('chmod +x {0}'.format(runner_path))
 
     def sync_local_fabric_env(self):

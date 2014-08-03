@@ -47,6 +47,5 @@ def formatloc(s, ctx={}, **kwargs):
                     s = s.replace('{}','{{}}')
                     s = s.format(**kw)
         except IndexError, e:
-            print "EE",e
             raise KeyError
     return s

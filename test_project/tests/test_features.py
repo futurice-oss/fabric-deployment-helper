@@ -62,7 +62,7 @@ class SoppaTest(BaseSuite):
 
     def test_packages_possibilities(self):
         m = modpack()
-        self.assertTrue(all(k in ['apt','pip','pip.venv'] for k in m.packages.keys()))
+        self.assertTrue(m.packman().unique_handlers())
 
     def test_kwargs_do_not_overwrite_needs(self):
         p = pip(ctx={'virtualenv':{}})

@@ -28,16 +28,15 @@ class Graphite(PythonDeploy):
             self.up('storage-schemas.conf', '{graphite_path}conf/storage-schemas.conf')
             if not self.exists('graphite.wsgi'):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
-        with self.cd('{graphite_path}webapp/graphite/') as b, self.mlcd('config/') as a:
-            self.up('local_settings.py', '{graphite_path}webapp/graphite/')
+        with self.cd('{graphite_web_path}') as b, self.mlcd('config/') as a:
+            self.up('local_settings.py', '{graphite_web_path}')
             self.sudo('chown {deploy_user} local_settings.py')
 
         self.up('graphite_supervisor.conf', '{supervisor.conf}')
         self.up('graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
-        args = 'syncdb --noinput'
-        with self.virtualenv.activate(), self.cd('{web_path}'):
-            self.sudo('python manage.py {args}'.format(args=args))
+        with self.virtualenv.activate(), self.cd('{graphite_web_path}'):
+            self.sudo('python manage.py syncdb --noinput')
 
         # add system-wide python-cairo into virtualenv
         with self.virtualenv.activate():

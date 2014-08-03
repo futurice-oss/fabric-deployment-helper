@@ -25,11 +25,14 @@ class Virtualenv(Soppa):
 
     def packages_path(self):
         with self.activate():
-            result = os.path.normpath(self.sudo("python -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'").strip()) + os.sep
+            rs = self.sudo("python -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'")
+            result = os.path.normpath(unicode(rs).strip()) + os.sep
         return result
 
     @contextmanager
     def activate(self):
+        if not env.project:
+            raise Exception('env.project not defined')
         if self.is_active:
             with self.prefix('source {path}bin/activate'):
                 yield

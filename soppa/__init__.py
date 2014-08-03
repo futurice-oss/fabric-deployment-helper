@@ -19,8 +19,8 @@ env.colorize_errors = True
 env.deploy_os = 'debian'
 env.deploy_user = 'www-data'
 env.deploy_group = 'www-data'
-env.deploy_tarball='/tmp/{release}.tar.gz'
-env.user = os.environ.get('USER', None)
+env.deploy_tarball = '/tmp/{release}.tar.gz'
+env.user = 'root'# os.environ.get('USER', 'root')
 env.owner = 'www-data'
 env.config_dirs = ['config/',]
 env.local_conf_path = 'config/'
@@ -39,6 +39,11 @@ env.use_ssh_config = True
 
 env.local_deployment = False
 env.performed = {}
+env.CACHE = {}
+env.packmans = [
+    'soppa.internal.packagehandler.Pip',
+    'soppa.internal.packagehandler.PipVenv',
+    'soppa.internal.packagehandler.Apt']
 
 @task
 def soppa_start():

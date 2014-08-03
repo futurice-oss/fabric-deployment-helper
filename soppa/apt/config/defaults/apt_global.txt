@@ -1,0 +1,13 @@
+build-essential
+curl
+git
+git-core
+libxml2-dev
+libxslt1-dev
+libcurl4-openssl-dev
+libssl-dev
+zlib1g-dev
+checkinstall
+libpcre3-dev
+libsqlite3-dev
+libjpeg8-dev

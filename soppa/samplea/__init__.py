@@ -7,6 +7,6 @@ class SampleA(DeployFrame):
     needs=['soppa.sampleb']
 
     def go(self):
-        print "setup.projectA:", self.project
+        pass
 
 samplea_task, samplea = register(SampleA)

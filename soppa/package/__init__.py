@@ -31,7 +31,7 @@ class Package(DeployFrame):
 
     def package_in_dir(self, pkg, needle):
         output = self.sudo("tar -tvf "+pkg+"|awk '{print $6}'")
-        lines = [k for k in [line.strip() for line in output.split("\n")] if k]
+        lines = [k for k in [line.strip() for line in unicode(output).split("\n")] if k]
         return all([k.startswith(needle) for k in lines])
 
     def package_path(self, url):

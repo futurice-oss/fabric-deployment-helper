@@ -1,20 +1,22 @@
 import os
 
-class PackageHandler(object):
-    """ list of lists [ [name, version] ] of packages """
-    def __init__(self, need):
-        self.register = []
+from soppa.contrib import *
+
+class PackageStorage(object):
+    def __init__(self):
         self.already_added = []
-        self.need = need
+        self.register = []
 
     def exists(self, name):
-        return False # TODO
+        return (name in self.register)
 
     def add(self, name):
-        if self.exists(name):
+        if not name:
+            return
+        if self.exists(self.requirementFormat(name)):
             self.already_added.append(name)
             return
-        self.register.append([self.requirementFormat(name)])
+        self.register.append(self.requirementFormat(name))
 
     def requirementFormat(self, name):
         return name
@@ -26,9 +28,6 @@ class PackageHandler(object):
         except ValueError:
             pass
 
-    def all(self):
-        return self.register
-
     def all_names(self, lower=True):
         def fun(val):
             if lower:
@@ -36,9 +35,21 @@ class PackageHandler(object):
             return val
         return [fun(k[0]) for k in self.all()]
 
+    def all(self):
+        return self.register
+
+class PackageHandler(object):
+    """ list of lists [ [name, version] ] of packages """
+    def __init__(self, need):
+        self.package = PackageStorage()
+        self.meta = PackageStorage()
+        self.need = need
+        self._CACHE = {}
+
     def defaults_conf_path(self):
         return os.path.join(self.need.module_path(),
                 self.need.local_conf_path,
+                'defaults',
                 '')
     
     def target_conf_path(self):
@@ -46,73 +57,69 @@ class PackageHandler(object):
             self.need.local_conf_path,
             self.need.get_name(), '')
 
-    def read(self, path):
-        target_path = os.path.join(self.defaults_conf_path(), path)
-        rs = []
+    def target_need_conf_path(self, path=None):
+        return os.path.join(self.need.local_conf_path,
+                    self.need.get_name(),
+                    path or self.path)
+
+    def read(self, path=None):
+        target_path = os.path.join(self.defaults_conf_path(), path or self.path)
         if not os.path.exists(target_path):
-            return rs
+            return
         for k in open(target_path).readlines():
-            package = k.replace("\n","")
-            if not package:
-                continue
-            rs.append(package)
-        return rs
+            row = k.replace("\n","").strip()
+            package = self.validate_package(row)
+            self.package.add(package)
+            meta = self.validate_meta(row)
+            self.meta.add(meta)
+
+    def write(self, path, packages):
+        with open(path, "w+") as f:
+            for namespace, data in packages.iteritems():
+                if data:
+                    f.write("\n".join(data) + "\n")
+
+    def validate_package(self, package):
+        if package and (not package[0].isalpha()):
+            package = None
+        return package
+
+    def validate_meta(self, package):
+        if self.validate_package(package):
+            package = None
+        return package
 
     def requirementName(self, name):
         return name.split('==')[0]
 
-class AptPackage(PackageHandler):
-    pass
+    def get_need(self):
+        key = 'package.handler.need.{0}'.format(self.need_module)
+        if not self._CACHE.get(key):
+            name = self.need_module.split('.')[-1]
+            module = import_string(self.need_module)
+            self._CACHE[key] = getattr(module, name)()
+        return self._CACHE[key]
 
-class PipPackage(PackageHandler):
-    def filenameToRequirement(self, filename):
-        """Converts 'package-name-1.2.3.tar.gz' to 'package-name==1.2.3'"""
-        match = re.match(r'(.+)-(\d.+?)(\.tar\.gz|\.tar\.bz2|\.zip)$', filename)
-        if not match:
-            return None
-        package, version, _extension = match.groups()
-        return '{package}=={version}'.format(package=package.lower(), version=version)
+    def install(self):
+        raise Exception("Unconfigured")
 
-    def requirementAsPackage(self, line):
-        # foo==x.y.z
-        if '#egg=' in line:
-            line = re.findall('#egg=(.*)', line)[0]
-        return line.lower()
+class Apt(PackageHandler):
+    need_module = 'soppa.apt'
+    path = 'apt_global.txt'
 
-    def requirementVersion(self, name):
-        try:
-            return name.split('==')[1] or ''
-        except IndexError:
-            return ''
+    def install(self, packages):
+        self.get_need().install(packages)
 
-    def requirements_as_pkgs(self, requirements_file):
-        if not os.path.isfile(requirements_file):
-            return []
-        all_requirements = set()
-        for raw_line in open(requirements_file):
-            line = raw_line.strip()
-            if line.startswith('#'):
-                continue
-            if line:
-                all_requirements.add(self.requirementAsPackage(line))
-        return all_requirements
+class Pip(PackageHandler):
+    need_module = 'soppa.pip'
+    path = 'requirements_global.txt'
 
-    def get_namespace(self):
-        return hasattr(self, 'project') or '_default_'
+    def install(self, packages):
+        self.get_need().install_packages_global(packages)
 
-    def valid_package(self, name):
-        return (not name.startswith('#'))
+class PipVenv(Pip):
+    need_module = 'soppa.pip'
+    path = 'requirements_venv.txt'
 
-    def remove_package(self, name):
-        pass
-
-    def package_exists(self, name):
-        return self.requirementName(name).lower() in\
-                [self.requirementName(k).lower() for k in self.packages[self.get_namespace()]]\
-                is None
-
-    def all_packages(self):
-        if self.packages.has_key(self.get_namespace()):
-            return self.packages[self.get_namespace()]
-        return set()
-
+    def install(self, packages):
+        self.get_need().install_packages_venv(packages)

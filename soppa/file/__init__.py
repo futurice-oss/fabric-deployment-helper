@@ -34,18 +34,8 @@ class File(Soppa):
         if not backup:
             call('rm {0}'.format(backup_file))
 
-    def append_string_to_file(self, filepath, text):
-        with open(filepath, "a+") as f:
-            f.write(text + "\n")
-
     def contains_text(self, haystack, needle):
         return (haystack.find(needle) <> -1)
-
-    def match_str_in_file(self, fname, text):
-        pat = re.compile(r"%s"%re.escape(text), re.MULTILINE)
-        with open(fname) as f:
-            res = f.read()
-        return (res.find(text) <> -1)
 
     def tmpfile(self, data, suffix=''):
         tf = tempfile.NamedTemporaryFile(suffix=suffix)

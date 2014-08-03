@@ -1,6 +1,8 @@
 import os, sys, copy, re
 from contextlib import contextmanager
-import inspect, getpass
+import inspect, getpass, zlib
+from functools import wraps
+from optparse import OptionParser
 
 # import and prefix fabric functions into their own namespace to not inadvertedly use them
 from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
@@ -16,7 +18,116 @@ from soppa.tools import import_string, Upload, LocalDict
 env.possible_bugged_strings = []
 env.ctx_failure = []
 
+def get_methods(klass):
+    return [k[0] for k in inspect.getmembers(klass, predicate=inspect.ismethod)]
+
+class PackageManager(object):
+    def __init__(self, instance):
+        self.instance = instance
+        self._CACHE = {}
+        self.handlers = []
+        self.storages = ['package','meta']#TODO: belongs in handler?
+
+        for need in [self.instance] + self.instance.get_needs():
+            for name in env.packmans:
+                handin = import_string(name)(need=need)
+                self.handlers.append(handin)
+
+    def unique_handlers(self):
+        key = 'unique_handlers'
+        if not self._CACHE.get(key):
+            self._CACHE[key] = [import_string(name)(need=self.instance) for name in env.packmans]
+        return self._CACHE[key]
+            
+    def get_packages(self):
+        """ Flatten packages into a single source of truth, ensuring needs do not override existing project dependencies """
+        rs = {k:{'meta':[], 'package':[]} for k in self.unique_handlers()}
+        def handler_group(handler):
+            for uh in self.unique_handlers():
+                if handler.__class__.__name__ == uh.__class__.__name__:
+                    return uh
+            raise Exception('Unknown handler')
+
+        for handler in self.handlers:
+            handler.read()
+            for storage in self.storages:
+                for package in getattr(handler, storage).all():
+                    existing_package_names = [handler.requirementName(k) for k in rs[handler_group(handler)][storage]]
+                    if handler.requirementName(package) not in existing_package_names:
+                        rs[handler_group(handler)][storage].append(package)
+        return rs
+
+    def write_packages(self, packages):
+        """ One project, single requirement files (encompasses all dependencies).
+        To install everything need multiple installs.
+        Does not overwrite existing settings.
+        """
+        for handler, pkg in packages.iteritems():
+            filepath = handler.target_need_conf_path(handler.path)
+            if not os.path.exists(os.path.dirname(filepath)):
+                self.instance.local('mkdir -p {0}'.format(os.path.dirname(filepath)))#TODO: elsewhere; Dir.ensure_exists(path)
+            if not os.path.exists(filepath):
+                handler.write(filepath, pkg)
+
+    def sync_packages(self, packages):
+        for handler, pkg in packages.iteritems():
+            filepath = handler.target_need_conf_path(handler.path)
+            handler.get_need().sync()
+
+    def download_packages(self, packages):
+        """ Download local copies of packages """
+        for handler, pkg in packages.iteritems():
+            filepath = handler.target_need_conf_path()
+            handler.get_need().download(filepath, new_only=True)
+
+    def install_packages(self, packages):
+        for handler, pkg in packages.iteritems():
+            handler.install(pkg['package'])
+
+class NoOp(object):
+    succeeded = True
+    failed = False
+    def __enter__(self):
+        pass
+    def __exit__(self, type, value, traceback):
+        pass
+    def __iter__(self):
+        return self
+    def next(self):
+        raise StopIteration
+    def __unicode__(self):
+        return ""
+
+class MetaClass(type):
+    """ Monitor API methods. Used to implement dry-run, logging """
+    @staticmethod
+    def wrapper(fun):
+        @wraps(fun)
+        def _(self, *args, **kwargs):
+            dry_run = os.environ.get('DRYRUN', False)
+            if dry_run:
+                result = NoOp()
+                print '[',fun.__name__,']',args,kwargs
+            else:
+                result = fun(self, *args, **kwargs)
+            return result
+        return _
+
+    def __new__(cls, name, bases, attrs):
+        for aname,fun in attrs.iteritems():
+            if callable(fun):
+                if aname.startswith('_'):
+                    continue
+                if aname in API_METHODS:
+                    attrs[aname] = cls.wrapper(attrs[aname])
+        return super(MetaClass, cls).__new__(cls, name, bases, attrs)
+
+# get_methods(ApiMixin)
+API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get', 'local_put', 'local_sudo', 'mlcd', 'prefix', 'put', 'run', 'sudo', 'up']
+
 class ApiMixin(object):
+    __metaclass__ = MetaClass
+    """ Methods with side-effects """
     # Fabric API
     def hide(self, *groups):
         return fabric_hide(*groups)
@@ -45,7 +156,6 @@ class ApiMixin(object):
             kwargs['use_sudo'] = True
         return fabric_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
 
-    # NOTE: get collides with Python dictionaries
     def get_file(self, remote_path, local_path, **kwargs):
         local_path = getattr(local_path, 'name', local_path)
         if env.local_deployment:
@@ -63,6 +173,42 @@ class ApiMixin(object):
     def exists(self, path, use_sudo=False, verbose=False):
         return fabric_exists(self.fmt(path), use_sudo=use_sudo, verbose=verbose)
     # END Fabric API
+
+    # Local extensions to Fabric
+    def local_sudo(self, cmd, capture=True, **kwargs):
+        """
+        with bash -l virtualenv-wrapper not activate
+        sudo -E required for environment variables to be passed in
+        """
+        cmd = cmd.replace('"','\\"').replace('$','\\$')
+        return self.local('sudo -E -S -p \'sudo password:\' /bin/bash -c "{0}"'.format(cmd), capture=capture, **kwargs)
+
+    def local_put(self, local_path, remote_path, capture=True, **kwargs):
+        if kwargs.get('use_sudo'):
+            return self.sudo('cp {0} {1}'.format(local_path, remote_path))
+        kw = dict(
+                capture=kwargs.get('capture', True),
+                shell=kwargs.get('shell', None))
+        return self.local('cp {0} {1}'.format(local_path, remote_path), **kw)
+    local_get = local_put
+
+    @contextmanager
+    def mlcd(self, path):
+        """ Really move to a (relative) local directory, unlike lcd """
+        calling_file = inspect.getfile(sys._getframe(2))
+        d = here(path, fn=calling_file)
+        try:
+            yield os.chdir(d)
+        finally:
+            os.chdir(env.basedir)
+
+    def up(self, frm, to, ctx={}):
+        """ Upload a template, with arguments relative to calling path """
+        caller_path = here(instance=self)
+        #TODO:inspecting frames and wrappers do not seem to play well together
+        #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
+        upload = Upload(frm, to, instance=self, caller_path=caller_path)
+        self.template.up(*upload.args, context=self.get_ctx(**ctx))
 
 class DeployMixin(ApiMixin):
     def setup_needs(self):
@@ -86,15 +232,6 @@ class DeployMixin(ApiMixin):
 
 class Soppa(DeployMixin):
     needs = []
-    packages = {
-            'pip': 'requirements_global.txt',
-            'pip.venv': 'requirements_venv.txt',
-            'apt': 'apt_global.txt',
-            }
-    package_handlers = {
-            'pip': 'soppa.internal.packagehandler.PipPackage',
-            'pip.venv': 'soppa.internal.packagehandler.PipPackage',
-            'apt': 'soppa.internal.packagehandler.AptPackage',}
     reserved_keys = ['needs','packages','reserved_keys','pkg',]
     ignored_internal_variables = ['needs', 'packages']
 
@@ -144,6 +281,12 @@ class Soppa(DeployMixin):
             if not self.has_need(k):
                 setattr(self, k, v)
 
+    def packman(self):
+        key = 'packman'
+        if not self._CACHE.get(key):
+            self._CACHE[key] = PackageManager(self)
+        return self._CACHE[key]
+
     def is_performed(self, fn):
         env.performed.setdefault(env.host_string, {})
         env.performed[env.host_string].setdefault(fn, False)
@@ -160,73 +303,11 @@ class Soppa(DeployMixin):
         }
         return c
 
-    # Local extensions to Fabric
-    def local_sudo(self, cmd, capture=True, **kwargs):
-        """
-        with bash -l virtualenv-wrapper not activate
-        sudo -E required for environment variables to be passed in
-        """
-        cmd = cmd.replace('"','\\"').replace('$','\\$')
-        return self.local('sudo -E -S -p \'sudo password:\' /bin/bash -c "{0}"'.format(cmd), capture=capture, **kwargs)
-
-    def local_put(self, local_path, remote_path, capture=True, **kwargs):
-        if kwargs.get('use_sudo'):
-            return self.sudo('cp {0} {1}'.format(local_path, remote_path))
-        kw = dict(
-                capture=kwargs.get('capture', True),
-                shell=kwargs.get('shell', None))
-        return self.local('cp {0} {1}'.format(local_path, remote_path), **kw)
-    local_get = local_put
-
-
-    @contextmanager
-    def mlcd(self, path):
-        """ Really move to a local directory, unlike lcd """
-        calling_file = inspect.getfile(sys._getframe(2))
-        d = here(path, fn=calling_file)
-        try:
-            yield os.chdir(d)
-        finally:
-            os.chdir(self.fmt('{basedir}'))
-
-    def has_need(self, string):
-        return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
-
     def find_need(self, string):
         for k in self.get_needs(as_str=True):
             if re.findall(string, k):
                 return k
         return None
-
-    def package_configuration(self, recipe):
-        """ Copy default configuration under current project, and download cached copies """
-        for k,v in recipe.packages.iteritems():
-            print "Installing recipe packages",recipe,v
-            source = here(instance=recipe)
-            rpath = os.path.join(source, v)
-            if k=='pip':
-                self.pip.prepare_python_packages(rpath)
-            elif k=='pip.venv':
-                self.pip.prepare_python_packages(rpath)
-            elif k=='apt':
-                if isinstance(v, basestring):
-                    v = [v]
-                if not env.TESTING:
-                    if self.operating.is_linux():
-                        self.apt.update()
-                        self.apt.install(v)
-            else:
-                raise Exception("Unknown configuration format")
-
-    def package_configuration_install(self, recipe):
-        pass
-
-    def install_all_packages(self):
-        self.package_configuration(self)
-        for recipe in self.get_needs():
-            self.package_configuration(recipe)
-        if not self.TESTING:
-            self.pip.synchronize_python_packages()
 
     def add_need(self, string):
         if self.find_need(string):
@@ -245,12 +326,6 @@ class Soppa(DeployMixin):
         if possible_unfilled_vars:
             env.possible_bugged_strings.append([string,result])
         return result
-
-    def up(self, frm, to, ctx={}):
-        """ Upload a template, with arguments relative to calling path """
-        caller_path = here(fn=inspect.getfile(sys._getframe(1)))
-        upload = Upload(frm, to, instance=self, caller_path=caller_path)
-        self.template.up(*upload.args, context=self.get_ctx(**ctx))
 
     def copy_configuration(self, recurse=False):
         """ Prepare local copies of module configuration files. Does not overwrite existing files. """
@@ -355,39 +430,6 @@ class Soppa(DeployMixin):
             self._CACHE[key] = list(rs)
         return self._CACHE[key]
 
-    def get_package_handler(self, name):
-        return import_string(self.package_handlers[name])
-
-    def get_packages(self):
-        rs = {k:[] for k in self.packages.keys()}
-        for need in [self] + self.get_needs():
-            for name,path in need.packages.iteritems():
-                handler = self.get_package_handler(name)(need=need)
-                packages = handler.read(path)
-                if packages:
-                    rs[name].append({need: packages})
-        return rs
-
-    def finalize_packages(self, packages):
-        rs = {k:[] for k in self.packages.keys()}
-        for handler_name, load in packages.iteritems():
-            for need, pkg in load[0].iteritems():
-                handler = self.get_package_handler(handler_name)(need=need)
-                existing_package_names = [handler.requirementName(k) for k in rs[handler_name]]
-                for package in pkg:
-                    if handler.requirementName(package) not in existing_package_names:
-                        rs[handler_name].append(package)
-        return rs
-
-    def write_final_packages(self, packages):
-        for handler_name, pkg in packages.iteritems():
-            filepath = os.path.join(self.local_conf_path,
-                    self.get_name(),
-                    self.packages[handler_name])
-            if not os.path.exists(filepath):
-                with open(filepath, "w+") as f:
-                    f.write("\n".join(pkg))
-
 
     def settings(self):
         return {}
@@ -397,7 +439,6 @@ class Soppa(DeployMixin):
 
     def get_and_load_need(self, key, *args, **kwargs):
         """ On-demand needs=[] resolve """
-        # remove instance specific kwargs.ctx
         name = key.split('.')[-1]
         module = import_string(key)
         fn = getattr(module, name)
@@ -415,6 +456,9 @@ class Soppa(DeployMixin):
         if rel:
             return rel.replace('releases/', '')
         return env.release
+
+    def has_need(self, string):
+        return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
 
     def __getattr__(self, key):
         try:
@@ -447,6 +491,8 @@ class Runner(DeployMixin):
     """ alias Deploy """
     def __init__(self, state={}):
         self.state = state
+        self._CACHE = {}
+        self.module = None
 
     def fmt(self, val, *args, **kwargs):
         return formatloc(val, env)
@@ -457,6 +503,7 @@ class Runner(DeployMixin):
             env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
 
     def setup(self, module):
+        self.module = module
         self.ask_sudo_password(capture=False)
 
         if env.project:
@@ -471,13 +518,11 @@ class Runner(DeployMixin):
         self.restart(needs)
 
     def configure(self, needs):
-        pip_packages = set()
         newProject = False
-        if not os.path.exists(env.local_conf_path):
+        if not os.path.exists(os.path.join(env.local_conf_path)):
             newProject = True
 
         for need in needs:
-            print "Gathering configuration for:",need.get_name()
             need.configure()
 
             need.copy_configuration()
@@ -487,12 +532,12 @@ class Runner(DeployMixin):
         if newProject:
             raise Exception('Default Configuration generated into config/. Review settings and configure any changes. Next run is live')
 
-        for need in needs:
-            """
-            if need.has_need('pip'):
-                need.pip.packages_as_local()
-                need.pip.install_package_global(self.version)
-            """
+        # Runner needs packages instances
+        packages = self.module.packman().get_packages()
+        self.module.packman().write_packages(packages)
+        self.module.packman().download_packages(packages)
+        self.module.packman().sync_packages(packages)
+        self.module.packman().install_packages(packages)
 
     def restart(self, needs):
         for need in needs:
