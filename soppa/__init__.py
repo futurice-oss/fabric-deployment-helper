@@ -52,14 +52,6 @@ def soppa_start():
 @task
 def soppa_end():
     print "Soppa: End"
-    if env.possible_bugged_strings:
-        print "Possible badly interpreted strings:"
-        pp(env.possible_bugged_strings)
-
-    if env.ctx_failure:
-        print "Possible context bugs:"
-        pp(env.ctx_failure)
-
     from soppa.contrib import dlog
     # TODO: save to a file on remote machine
     pp(dlog.data)

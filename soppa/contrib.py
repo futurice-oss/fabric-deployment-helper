@@ -17,7 +17,6 @@ from soppa.fmt import formatloc
 from soppa.tools import import_string, Upload, LocalDict
 
 env.possible_bugged_strings = []
-env.ctx_failure = []
 
 def get_methods(klass):
     return [k[0] for k in inspect.getmembers(klass, predicate=inspect.ismethod)]
@@ -64,7 +63,7 @@ class PackageManager(object):
         Does not overwrite existing settings.
         """
         for handler, pkg in packages.iteritems():
-            filepath = handler.target_need_conf_path(handler.path)
+            filepath = handler.target_need_conf_path()
             if not os.path.exists(os.path.dirname(filepath)):
                 self.instance.local('mkdir -p {0}'.format(os.path.dirname(filepath)))#TODO: elsewhere; Dir.ensure_exists(path)
             if not os.path.exists(filepath):
@@ -72,7 +71,7 @@ class PackageManager(object):
 
     def sync_packages(self, packages):
         for handler, pkg in packages.iteritems():
-            filepath = handler.target_need_conf_path(handler.path)
+            filepath = handler.target_need_conf_path()
             handler.get_need().sync()
 
     def download_packages(self, packages):
@@ -210,8 +209,8 @@ class ApiMixin(object):
         to = to or self.conf_dir
         #TODO:inspecting frames and wrappers do not seem to play well together
         #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
-        upload = Upload(frm, to, instance=self, caller_path=caller_path)
-        self.template.up(*upload.args, context=self.get_ctx(**ctx))
+        upload = Upload(frm, to, instance=self.parent(), caller_path=caller_path)
+        self.template.up(*upload.args, context=self.parent().get_ctx(**ctx))
 
 class DeployMixin(ApiMixin):
     def setup_needs(self):
@@ -303,6 +302,19 @@ class Soppa(DeployMixin):
         for k,v in context.iteritems():
             if not self.has_need(k):
                 setattr(self, k, v)
+
+    def isDirty(self):
+        dirty = False
+        # has configuration for need changed?
+        # TODO: read config from server for initial state
+        # TODO: if never deployed, should be dirty.
+        for host, data in dlog.data.get('hosts', {}).iteritems():
+            if not data.get(self.get_name()):
+                continue
+            for outcome in data[self.get_name()].get('files', []):
+                if outcome['diff']:
+                    dirty = True
+        return dirty
 
     def packman(self):
         key = 'packman'
@@ -569,5 +581,6 @@ class Runner(DeployMixin):
     def restart(self, needs):
         for need in needs:
             if hasattr(need, 'restart'):
-                print "Restarting:",need.get_name()
-                need.restart()
+                if need.isDirty():
+                    print "Restarting:",need.get_name()
+                    need.restart()

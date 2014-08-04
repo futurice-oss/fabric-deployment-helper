@@ -60,6 +60,12 @@ class SoppaTest(BaseSuite):
     def tearDown(self):
         env = self.base
 
+    def test_log_changes(self):
+        m = modpack()
+        self.assertFalse(m.isDirty())
+        dlog.add('files',m, {'diff':'!','source':'foo','target':'bar'})
+        self.assertTrue(m.isDirty())
+
     def test_packages_possibilities(self):
         m = modpack()
         self.assertTrue(m.packman().unique_handlers())

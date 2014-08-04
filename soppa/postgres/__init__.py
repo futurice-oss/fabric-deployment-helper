@@ -19,7 +19,7 @@ class Postgres(Soppa):
         with settings(warn_only=True), self.hide('warnings'):
             self.sudo('pg_createcluster 9.1 main --start')
 
-        self.up('pg_hba.conf', '{path}')
+        self.up('pg_hba.conf', '{postgres_path}')
 
         self.sudo('chmod +x /etc/init.d/postgresql')
         self.sudo('update-rc.d postgresql defaults')
