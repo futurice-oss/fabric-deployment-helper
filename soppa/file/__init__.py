@@ -1,6 +1,7 @@
 import os, sys, time, copy, re, logging
 import inspect, tempfile
 from dirtools import Dir
+import difflib
 
 from soppa.contrib import *
 
@@ -33,6 +34,14 @@ class File(Soppa):
         call('rm {0}'.format(tmp_file))
         if not backup:
             call('rm {0}'.format(backup_file))
+
+    def diff_remote_to_local(self, remote_file, local_file):
+        with self.hide('output','warnings'), settings(warn_only=True):
+            with tempfile.NamedTemporaryFile(delete=True) as f, open(local_file) as f2:
+                a = self.get_file(remote_file, f)
+                f.file.seek(0)
+                diff = difflib.ndiff(f.readlines(), f2.readlines())
+        return "".join(x for x in diff if x.startswith('- ') or x.startswith('+ ')).strip()
 
     def contains_text(self, haystack, needle):
         return (haystack.find(needle) <> -1)

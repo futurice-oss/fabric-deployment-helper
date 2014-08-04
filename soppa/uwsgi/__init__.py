@@ -14,10 +14,11 @@ class Uwsgi(DeployFrame):
         'soppa.template',
         'soppa.pip',
     ]
+    conf_dir = '{basepath}config/vassals/'
 
     def go(self):
         """ touch configs to reload, otherwise start uwsgi """
-        self.sudo('mkdir -p {basepath}config/vassals')
+        self.sudo('mkdir -p {basepath}config/vassals/')
         self.up('uwsgi.ini', '{basepath}config/vassals/')
         self.sudo('chown -fR {deploy_user} {basepath}config/')
 

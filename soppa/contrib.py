@@ -1,8 +1,9 @@
-import os, sys, copy, re
+import os, sys, copy, re, datetime
 from contextlib import contextmanager
 import inspect, getpass, zlib
 from functools import wraps
 from optparse import OptionParser
+from subprocess import call
 
 # import and prefix fabric functions into their own namespace to not inadvertedly use them
 from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
@@ -82,7 +83,8 @@ class PackageManager(object):
 
     def install_packages(self, packages):
         for handler, pkg in packages.iteritems():
-            handler.install(pkg['package'])
+            if pkg['package']:
+                handler.install(pkg['package'])
 
 class NoOp(object):
     succeeded = True
@@ -107,7 +109,7 @@ class MetaClass(type):
             dry_run = os.environ.get('DRYRUN', False)
             if dry_run:
                 result = NoOp()
-                print '[',fun.__name__,']',args,kwargs
+                print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self.get_name(), fun.__name__), args,kwargs
             else:
                 result = fun(self, *args, **kwargs)
             return result
@@ -202,9 +204,10 @@ class ApiMixin(object):
         finally:
             os.chdir(env.basedir)
 
-    def up(self, frm, to, ctx={}):
+    def up(self, frm, to=None, ctx={}):
         """ Upload a template, with arguments relative to calling path """
         caller_path = here(instance=self)
+        to = to or self.conf_dir
         #TODO:inspecting frames and wrappers do not seem to play well together
         #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
         upload = Upload(frm, to, instance=self, caller_path=caller_path)
@@ -229,6 +232,26 @@ class DeployMixin(ApiMixin):
         if not self.exists('{basepath}www/'):
             with self.cd('{basepath}'):
                 self.run('ln -s {releases}default/ www.new; mv -T www.new www')
+
+class DeployLog(object):
+    def __init__(self, *args, **kwargs):
+        self.data = {}
+        meta = {
+            'user': os.environ.get('USER', env.user),
+            'date': datetime.datetime.now().isoformat(),
+            'machine': os.popen('uname -a').read().strip(),}
+        self.data['meta'] = meta
+        self.data['hosts'] = {}
+
+    def add(self, bucket, need, data):
+        host = env.host_string
+        need_name = need.get_name()
+        hosts = self.data['hosts']
+        hosts.setdefault(host, {})
+        hosts[host].setdefault(need_name, {})
+        hosts[host][need_name].setdefault(bucket, [])
+        hosts[host][need_name][bucket].append(data)
+dlog = DeployLog()
 
 class Soppa(DeployMixin):
     needs = []
@@ -297,11 +320,15 @@ class Soppa(DeployMixin):
         env.performed[env.host_string][fn] = True
 
     def parent_context(self):
-        """ Context to pass onto dependencies """
-        c = {
+        """ Context passed for dependant needs """
+        return {
             'project': self.project,
+            'parent_instance': self,
         }
-        return c
+
+    def parent(self):
+        # TODO: traverse until root parent?
+        return self.parent_instance if hasattr(self, 'parent_instance') else self
 
     def find_need(self, string):
         for k in self.get_needs(as_str=True):

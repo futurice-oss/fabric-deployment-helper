@@ -11,9 +11,10 @@ class Nginx(DeployFrame):
         'soppa.operating',
         'soppa.template',
     ]
+    conf_dir = '{nginx_dir}conf/sites-enabled/'
 
     def go(self):
-        self.sudo('mkdir -p {nginx_dir}conf/sites-enabled/')
+        self.sudo('mkdir -p {nginx_conf_dir}')
         
         if self.operating.is_linux():
             self.up('init.d/nginx', '/etc/init.d/')

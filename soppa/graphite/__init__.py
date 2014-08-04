@@ -32,8 +32,8 @@ class Graphite(PythonDeploy):
             self.up('local_settings.py', '{graphite_web_path}')
             self.sudo('chown {deploy_user} local_settings.py')
 
-        self.up('graphite_supervisor.conf', '{supervisor.conf}')
-        self.up('graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+        self.supervisor.up('graphite_supervisor.conf', '{supervisor_conf_dir}')
+        self.nginx.up('graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
 
         with self.virtualenv.activate(), self.cd('{graphite_web_path}'):
             self.sudo('python manage.py syncdb --noinput')

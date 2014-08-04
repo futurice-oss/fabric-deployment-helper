@@ -14,7 +14,7 @@ class Grafana(DeployFrame):
 
     def go(self):
         self.package.file_as_release(self.url)
-        self.up('grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+        self.nginx.up('grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
         self.up('config.js', '{project_root}')
 
 grafana_task, grafana = register(Grafana)

@@ -8,7 +8,7 @@ Supervisor: http://supervisord.org/
 """
 
 class Supervisor(DeployFrame):
-    conf='/etc/supervisor/conf.d/'
+    conf_dir='/etc/supervisor/conf.d/'
     opt='-c "/etc/supervisord.conf"'
     user='{deploy_user}'
 
@@ -19,7 +19,7 @@ class Supervisor(DeployFrame):
     ]
 
     def go(self):
-        self.sudo('mkdir -p /etc/supervisor/conf.d/')
+        self.sudo('mkdir -p {supervisor_conf_dir}')
         self.sudo('mkdir -p /var/log/supervisor/')
 
         if self.operating.is_linux():
@@ -46,7 +46,6 @@ class Supervisor(DeployFrame):
 
     @with_settings(warn_only=True)
     def restart(self):
-        self.pre()#re-upload settings on restart
         self.stop()
         self.startcmd()
 

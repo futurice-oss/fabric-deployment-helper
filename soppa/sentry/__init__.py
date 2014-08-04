@@ -25,13 +25,13 @@ class Sentry(PythonDeploy):
         self.sudo('mkdir -p {www_root}htdocs')
 
         if self.has_need('nginx'):
-            self.up('sentry_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+            self.nginx.up('sentry_nginx.conf', '{nginx_conf_dir}')
 
         if self.has_need('apache'):
-            self.up('sentry_apache.conf', '{apache_dir}sites-enabled/')
+            self.apache.up('sentry_apache.conf', '{apache_dir}sites-enabled/')
 
         if self.has_need('supervisor'):
-            self.up('sentry_supervisor.conf', '{supervisor_conf}')
+            self.supervisor.up('sentry_supervisor.conf', '{supervisor_conf_dir}')
 
         self.up('conf.py', '{release_path}')
 

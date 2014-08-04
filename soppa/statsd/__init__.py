@@ -14,7 +14,7 @@ class StatsD(DeployFrame):
             with self.cd('{basepath}'):
                 self.sudo('git clone https://github.com/etsy/statsd.git')
         self.up('exampleConfig.js', '{basepath}statsd/')
-        self.up('statsd_supervisor.conf', '{supervisor.conf}')
+        self.supervisor.up('statsd_supervisor.conf', '{supervisor_conf_dir}')
 
     def stats(self):
         """ stats|counters|timers """

@@ -40,6 +40,15 @@ class DjangoDeployTestCase(BaseSuite):
         r = Runner()
         r.setup(graphite(ctx=ctx))
 
+class SingleTestCase(BaseSuite):
+    def test_grafana(self):
+        env.project = 'grafana'
+        ctx = dict(
+        )
+        r = Runner()
+        g = grafana(ctx=ctx)
+        r.setup(g)
+
 class DeployTestCase(BaseSuite):
     def test_hello(self):
         self.assertEquals(1,1)
@@ -48,13 +57,6 @@ class DeployTestCase(BaseSuite):
         env.project='statsd'
         r = Runner()
         r.setup(statsd())
-
-    def test_grafana(self):
-        ctx = dict(
-            project='grafana'
-        )
-        r = Runner()
-        r.setup(grafana(ctx=ctx))
 
     def test_sentry(self):
         env.project = 'sentry'
@@ -92,6 +94,7 @@ def run_deployment_tests():
         map(unittest.makeSuite, [
             DjangoDeployTestCase,
             DeployTestCase,
+            SingleTestCase,
     ]))
     result = runner.run(alltests)
     print 'Tests run ', result.testsRun

@@ -28,7 +28,7 @@ env.local_conf_path = 'config/'
 env.project = None # set in fabfile *only*
 env.www_root = '/srv/www/'
 env.basepath = '{www_root}{project}/'
-env.project_root = '{www_root}{project}/www/'
+env.project_root = '{basepath}/www/'
 
 env.release = time.strftime('%Y%m%d%H%M%S')
 env.release_path = '{basepath}releases/{release}/'
@@ -59,6 +59,10 @@ def soppa_end():
     if env.ctx_failure:
         print "Possible context bugs:"
         pp(env.ctx_failure)
+
+    from soppa.contrib import dlog
+    # TODO: save to a file on remote machine
+    pp(dlog.data)
 
 # insert 'always on' tasks
 env.tasks.insert(0, 'soppa_start')
