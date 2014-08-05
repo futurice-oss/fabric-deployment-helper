@@ -30,7 +30,7 @@ class Mysql(Soppa):
 
     def mysqlcmd(self, cmd, db=''):
         scmd = '; '.join(cmd) + ';'
-        mysql_cmd = scmd.format(**self.get_ctx())
+        mysql_cmd = self.fmt(scmd)
         shcmd = """mysql -u{user} -p{password} -e "{cmd}" {database} """.format(
                 user=self.user,
                 password=self.password,

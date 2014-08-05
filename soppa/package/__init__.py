@@ -1,8 +1,12 @@
 from soppa.contrib import *
 
-from soppa.deploy import DeployFrame
+class Package(Soppa):
+    release = time.strftime('%Y%m%d%H%M%S')
+    release_path = '{basepath}releases/{release}/'
+    needs = [
+        'soppa.file',
+    ]
 
-class Package(DeployFrame):
     def file_as_release(self, url):
         """ Download a file to be used as a release """
         package_pkg = self.package_path(url)

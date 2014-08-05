@@ -1,15 +1,19 @@
 from soppa.contrib import *
-from soppa.python import PythonDeploy
 
-class Django(PythonDeploy):
+class Django(Soppa):
     settings='{project}.settings.prod'
-    needs=PythonDeploy.needs+[
-        'soppa.file',
+    needs=['soppa.file',
         'soppa.uwsgi',
         'soppa.nginx',
         'soppa.mysql',
         'soppa.nodejs',
         'soppa.template',
+
+        'soppa.virtualenv',
+        'soppa.supervisor',
+        'soppa.redis',
+        'soppa.pip',
+        'soppa.remote',
 
         'soppa.operating',
         'soppa.apt',

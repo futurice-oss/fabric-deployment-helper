@@ -2,15 +2,19 @@ import unittest, copy, os
 import shutil
 
 from soppa.ingredients import *
-from soppa.alias import mlcd
 from soppa.local import aslocal
+from soppa.fmt import fmtkeys, formatloc
+from soppa.tools import ObjectDict
+
+# failures, if not importing ahead. Why?
+from soppa.internal.packagehandler import Pip
+from soppa.operating import operating
+# /why
 
 from ..moda import moda
 from ..modb import modb
 from ..modc import modc
 from ..modpack import modpack
-
-env.TESTING = True
 
 class BaseSuite(unittest.TestCase):
     pass
@@ -85,12 +89,12 @@ class SoppaTest(BaseSuite):
         ctx = {'host': 'localhost.here'}
         i = graphite(ctx=ctx)
         self.assertEquals(i.host, ctx['host'])
-        self.assertEquals(i.get_ctx()['graphite_host'], ctx['host'])
 
     def test_mlcd(self):
         base_dir = os.getcwd()
         there = here()
-        with mlcd(os.path.join('../..', 'soppa/supervisor/')):
+        s=Soppa()
+        with s.mlcd(os.path.join('../..', 'soppa/supervisor/')):
             self.assertEquals(os.getcwd(), os.path.join(base_dir, 'soppa/supervisor'))
             self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../../soppa/supervisor/')))
 
@@ -98,14 +102,11 @@ class SoppaTest(BaseSuite):
         p = pip()
         v = virtualenv()
         v.is_active = True
-        self.assertEquals(
-                '{virtualenv.is_active}'.format(**p.get_ctx()),
-                str(v.is_active))
+        self.assertEquals(p.fmt('{virtualenv.is_active}'), str(v.is_active))
         self.assertTrue(p.virtualenv.is_active)
         self.assertTrue(v.is_active)
         self.assertTrue(p.packages_to)
-        self.assertTrue(p.get_ctx()['pip_packages_to'])
-        self.assertTrue(v.get_ctx().pip.packages_to)
+        self.assertTrue(p.packages_to)
         self.assertTrue(v.pip.packages_to)
 
     def test_formatting(self):
@@ -122,7 +123,7 @@ class SoppaTest(BaseSuite):
         self.assertEquals(formatloc('{foo}', ctx), 'Helsinki')
 
         self.assertEquals(formatloc('{foo_bar}', {'foo_bar': 'oh'}), 'oh')
-        c = {'foo': LocalDict({'bar': 'oh.oh'})}
+        c = {'foo': ObjectDict({'bar': 'oh.oh'})}
         self.assertEquals(formatloc('{foo.bar}', c), 'oh.oh')
 
         u = Upload('config/statsd_supervisor.conf', '{packages_from}', instance=pip(), caller_path='/tmp/')
@@ -200,11 +201,10 @@ class ModuleTest(BaseSuite):
 
     def test_module_contains_variables_from_dependent_modules(self):
         ma = moda()
-        ctx = ma.get_ctx()
-        self.assertEquals(ctx.moda_var, 'moda')
-        self.assertEquals(ctx.modb_var, 'modb')
-        with self.assertRaises(AttributeError):
-            ctx.modc_var
+        self.assertEquals(ma.var, 'moda')
+        self.assertEquals(ma.modb.var, 'modb')
+        with self.assertRaises(KeyError):
+            ma.modc.var
 
 class WaterTest(BaseSuite):
     def test_settings_layers(self):

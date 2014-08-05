@@ -1,7 +1,6 @@
 from soppa.contrib import *
-from soppa.deploy import DeployFrame
 
-class SampleB(DeployFrame):
+class SampleB(Soppa):
     needs = ['soppa.template',]
 
     def go(self):

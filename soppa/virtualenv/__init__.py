@@ -14,14 +14,15 @@ class Virtualenv(Soppa):
     ]
 
     def setup(self):
-        if self.project is None:
+        if self.release.project is None:
+            print "No project configured, skipping virtualenv setup"
             return
         with settings(warn_only=True):
             self.run('[ ! -d {path} ] && rm -rf {path} && '
                  'virtualenv'
                  ' --extra-search-dir={pip.packages_to}'
-                 ' --prompt="({project})"'
-                 ' {path}'.format(**self.get_ctx()))
+                 ' --prompt="({release.project})"'
+                 ' {path}')
 
     def packages_path(self):
         with self.activate():

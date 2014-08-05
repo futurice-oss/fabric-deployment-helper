@@ -1,7 +1,6 @@
 import json, time, os, copy
 
 from soppa.contrib import *
-from soppa.alias import mlcd
 
 class SilentEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -17,6 +16,7 @@ class Remote(Soppa):
         'soppa.virtualenv',
         'soppa.template',
     ]
+
     def to_json(self, data, cls=None):
         return json.dumps(data, encoding='utf-8', cls=cls, ensure_ascii=False, separators=(',',':'))
 
@@ -27,20 +27,19 @@ class Remote(Soppa):
                 fn = self.file.import_string(cmd)
                 fn()
             else:
-                self.sudo(formatloc('python {runner_path} --cmd={cmd} --filename={sync_filename}'))
+                self.sudo('python {runner_path} --cmd={cmd} --filename={sync_filename}')
         # TODO: cleanup created sync.json that remains
 
-    def setup_runner(self, runner_path=None):
-        runner_path = runner_path or self.runner_path
-        self.up('runner.py', runner_path)
-        self.sudo('chmod +x {0}'.format(runner_path))
+    def setup(self):
+        self.up('runner.py', self.runner_path)
+        self.sudo('chmod +x {0}'.format(self.runner_path))
 
     def sync_local_fabric_env(self):
         """ Sync current fabric.env when running commands on a remote server
         - create dist/runner.py for executing remote commands
         """
         env.sync_filename = '/tmp/{0}_env.txt'.format(time.time())
-        env_copy = self.get_ctx()
+        env_copy = self
         env_copy.use_ssh_config = False
         env_copy.host = False
         env_copy.host_string = False

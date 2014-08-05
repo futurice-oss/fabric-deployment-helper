@@ -13,8 +13,8 @@ from fabric.decorators import with_settings
 from fabric.operations import prompt as fabric_prompt
 
 from soppa import *
-from soppa.fmt import formatloc
-from soppa.tools import import_string, Upload, LocalDict
+from soppa.fmt import fmtkeys, formatloc, escape_bad_matches
+from soppa.tools import import_string, Upload
 
 env.possible_bugged_strings = []
 
@@ -29,14 +29,14 @@ class PackageManager(object):
         self.storages = ['package','meta']#TODO: belongs in handler?
 
         for need in [self.instance] + self.instance.get_needs():
-            for name in env.packmans:
+            for name in self.instance.env.packmans:
                 handin = import_string(name)(need=need)
                 self.handlers.append(handin)
 
     def unique_handlers(self):
         key = 'unique_handlers'
         if not self._CACHE.get(key):
-            self._CACHE[key] = [import_string(name)(need=self.instance) for name in env.packmans]
+            self._CACHE[key] = [import_string(name)(need=self.instance) for name in self.instance.env.packmans]
         return self._CACHE[key]
             
     def get_packages(self):
@@ -129,14 +129,19 @@ API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get', 'local_
 class ApiMixin(object):
     __metaclass__ = MetaClass
     """ Methods with side-effects """
+    sudo_expect = ['shell', 'group', 'stderr', 'stdout', 'quiet', 'user', 'timeout', 'warn_only', 'shell_escape', 'pty', 'combine_stderr']
+    run_expect = ['shell', 'shell_escape', 'stderr', 'stdout', 'quiet', 'timeout', 'warn_only', 'pty', 'combine_stderr']
     # Fabric API
     def hide(self, *groups):
         return fabric_hide(*groups)
 
-    def sudo(self, command, *args, **kwargs):
+    def _expects(self, data, supported):
+        return {k:v for k,v in data.iteritems() if k in supported}
+
+    def sudo(self, command, **kwargs):
         if env.local_deployment:
-            return self.local_sudo(command, *args, **kwargs)
-        return fabric_sudo(self.fmt(command), *args, **kwargs)
+            return self.local_sudo(command, **kwargs)
+        return fabric_sudo(self.fmt(command, **kwargs), **self._expects(kwargs, self.sudo_expect))
 
     def run(self, command, **kwargs):
         if env.local_deployment:
@@ -144,7 +149,7 @@ class ApiMixin(object):
         if kwargs.get('use_sudo'):
             return self.sudo(command, **kwargs)
         else:
-            return fabric_run(self.fmt(command), **kwargs)
+            return fabric_run(self.fmt(command, **kwargs), **self._expects(kwargs, self.run_expect))
 
     def local(self, command, capture=False, shell=None):
         return fabric_local(self.fmt(command), capture=capture, shell=shell)
@@ -210,7 +215,7 @@ class ApiMixin(object):
         #TODO:inspecting frames and wrappers do not seem to play well together
         #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
         upload = Upload(frm, to, instance=self.parent(), caller_path=caller_path)
-        self.template.up(*upload.args, context=self.parent().get_ctx(**ctx))
+        self.template.up(*upload.args, context=self.parent())
 
 class DeployMixin(ApiMixin):
     def setup_needs(self):
@@ -221,8 +226,8 @@ class DeployMixin(ApiMixin):
             getattr(instance, 'setup')()
             self.set_performed(key_name)
 
-    def ownership(self):
-        self.sudo('chown -fR {owner} {basepath}')
+    def ownership(self, owner='root'):
+        self.sudo('chown -fR {owner} {release.basepath}'.format(owner=owner))
 
     def dirs(self):
         self.sudo('mkdir -p {www_root}dist/')
@@ -231,6 +236,115 @@ class DeployMixin(ApiMixin):
         if not self.exists('{basepath}www/'):
             with self.cd('{basepath}'):
                 self.run('ln -s {releases}default/ www.new; mv -T www.new www')
+
+class InspectMixin(object):
+
+    def get_class_settings(self, for_self=False):
+        """ Get all class and instance variables.
+        - __dict__ is not enough.
+        - namespace module keys, to be usable directly, or via module instance (foo_bar vs foo.bar)
+        """
+        rs = {}
+        def is_valid(key, value):
+            # TODO: only allow strings, numbers?
+            if not key.startswith('__')\
+                and not inspect.ismethod(value)\
+                and not inspect.isfunction(value)\
+                and not inspect.isclass(value):
+                return True
+            return False
+        def is_for_module(key):
+            if key \
+                    and not for_self \
+                    and key not in self.reserved_keys \
+                    and key in module_keys:
+                        return True
+            return False
+        values = inspect.getmembers(self)
+        module_keys = self.__class__.__dict__.keys()
+        for key,value in values:
+            if is_valid(key, value):
+                if is_for_module(key):
+                    namespaced_key = key
+                    if not key.startswith('{0}_'.format(self.get_name())):
+                        namespaced_key = '{0}_{1}'.format(self.get_name(), key)
+                    rs[namespaced_key] = value # module scope
+                else:
+                    rs[key] = value # global scope
+        return rs
+
+class NeedMixin(InspectMixin):
+    project = None
+    needs = []
+    def __init__(self, *args, **kwargs):
+        self._CACHE = {}
+        self.args = args
+        self.kwargs = kwargs
+    
+    def get_needs(self, as_str=False):
+        """ Return module dependendies defined in needs=[] and need_* """
+        key = 'get_needs.{0}'.format(as_str)
+        if not self._CACHE.get(key):
+            rs = set()
+            for k in self.needs:
+                name = k.split('.')[-1]
+                if as_str:
+                    rs.add(k)
+                else:
+                    rs.add(getattr(self, name))
+
+            for k,v in self.get_class_settings(for_self=True).iteritems():
+                if k.startswith('need_'):
+                    name = v.split('.')[-1]
+                    if as_str:
+                        rs.add(v)
+                    else:
+                        rs.add(getattr(self, name))
+            self._CACHE[key] = list(rs)
+        return self._CACHE[key]
+
+    def find_need(self, string):
+        for k in self.get_needs(as_str=True):
+            if re.findall(string, k):
+                return k
+        return None
+
+    def add_need(self, string):
+        if self.find_need(string):
+            return
+        self.needs.append(string)
+        self.get_and_load_need(string)
+
+    def has_need(self, string):
+        return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
+
+    def get_and_load_need(self, key, *args, **kwargs):
+        """ On-demand needs=[] resolve """
+        name = key.split('.')[-1]
+        module = import_string(key)
+        fn = getattr(module, name)
+
+        instance = fn(ctx_parent=self.parent_context())
+        setattr(self, name, instance)
+
+        return instance
+
+    def parent_context(self):
+        """ Context passed for dependant needs """
+        return {
+            'parent_instance': self,
+        }
+
+    def __getattr__(self, key):
+        try:
+            return self.__dict__[key]
+        except Exception, e:
+            # lazy-load dependencies
+            if not key.startswith('__') and self.has_need(key):
+                return self.get_and_load_need(self.find_need(key),
+                        *self.args,
+                        **self.kwargs)
+            raise
 
 class DeployLog(object):
     def __init__(self, *args, **kwargs):
@@ -252,51 +366,38 @@ class DeployLog(object):
         hosts[host][need_name][bucket].append(data)
 dlog = DeployLog()
 
-class Soppa(DeployMixin):
-    needs = []
-    reserved_keys = ['needs','packages','reserved_keys','pkg',]
-    ignored_internal_variables = ['needs', 'packages']
+class Soppa(DeployMixin, NeedMixin):
+    reserved_keys = ['needs','reserved_keys']
+    needs = ['soppa.release']
 
     def __init__(self, *args, **kwargs):
+        super(Soppa, self).__init__(*args, **kwargs)
+        # class(dict()) == class(ctx=dict())
         self.args = args
         self.kwargs = kwargs
-        self._CACHE = {}
-        # class(dict()) == class(ctx=dict())
         if self.args\
                 and isinstance(self.args[0], dict)\
                 and len(self.args)==1\
                 and not self.kwargs.get('ctx'):
             self.kwargs['ctx'] = self.args[0]
 
+        # fabric environment
+        self.env = env
+
         # Configuration
-        context = LocalDict()
-        # global fabric variables
-        # - immediately evaluated against current context (slow)
-        # TODO: scope to self.env, in templates {env.X} ?
-        envcopy = {}
-        ctx = {}
-        ctx.update(**env)
-        ctx.update(**kwargs.get('ctx_parent', {}))
-        ctx.update(**env.ctx.get(self.get_name(), {}))
-        ctx.update(**kwargs.get('ctx', {}))
-        for k,v in env.iteritems():
-            if not hasattr(self, k):
-                envcopy[k] = formatloc(v, ctx)
-        context.update(**envcopy)
+        context = {}
 
         # parent variables
         context.update(**kwargs.get('ctx_parent', {}))
-
-        # Do not pass internal Soppa variables onward from parent
-        for k in self.ignored_internal_variables:
-            if context.get(k):
-                del context[k]
 
         # global class variables
         context.update(**env.ctx.get(self.get_name(), {}))
 
         # instance variables
         context.update(**kwargs.get('ctx', {}))
+
+        if any([key in self.reserved_keys for key in context.keys()]):
+            raise Exception("Reserved keys used")
 
         # set initial state based on context
         for k,v in context.iteritems():
@@ -331,40 +432,41 @@ class Soppa(DeployMixin):
         self.is_performed(fn)
         env.performed[env.host_string][fn] = True
 
-    def parent_context(self):
-        """ Context passed for dependant needs """
-        return {
-            'project': self.project,
-            'parent_instance': self,
-        }
-
     def parent(self):
         # TODO: traverse until root parent?
         return self.parent_instance if hasattr(self, 'parent_instance') else self
 
-    def find_need(self, string):
-        for k in self.get_needs(as_str=True):
-            if re.findall(string, k):
-                return k
-        return None
-
-    def add_need(self, string):
-        if self.find_need(string):
-            return
-        self.needs.append(string)
-        self.get_and_load_need(string)
-
     def fmt(self, string, **kwargs):
         """ Format a string.
-        self.fmt(string) vs string.format(**self.get_ctx())
-        self.fmt(string, foo=2) vs string.format(foo=2, **self.get_ctx())
+        self.fmt(string) vs string.format(self=self)
+        self.fmt(string, foo=2) vs string.format(foo=2, self=self)
+
+        Add self as formatting argument
+        {foo} => {self.foo}.format(self=self)
+        {foo} kwargs(foo=2) => {foo}.format(foo=foo)
+        {foo.bar} kwargs(foo=2) => {foo}.format(self=self)
         """
-        ctx = self.get_ctx(**kwargs)
-        result = formatloc(string, ctx)
-        possible_unfilled_vars = ('{' in result)
-        if possible_unfilled_vars:
-            env.possible_bugged_strings.append([string,result])
-        return result
+        for times in range(6):
+            if isinstance(string, basestring):
+                string = escape_bad_matches(string)
+                if '{' not in string:
+                    break
+            keys = fmtkeys(string)
+            kwargs_keys = kwargs.keys()
+            add_self = False
+            if all([key not in kwargs_keys for key in keys]):
+                add_self = True
+            for key in kwargs_keys:
+                if '.' in key:
+                    add_self = True
+            if add_self:
+                kwargs['self'] = self
+            for key in keys:
+                if key not in kwargs_keys:
+                    if not key.startswith('self.'):
+                        string = string.replace('{'+key+'}', '{self.'+key+'}')
+            string = string.format(**kwargs)
+        return string
 
     def copy_configuration(self, recurse=False):
         """ Prepare local copies of module configuration files. Does not overwrite existing files. """
@@ -401,114 +503,17 @@ class Soppa(DeployMixin):
     def get_name(self):
         return self.__class__.__name__.lower()
 
-    def get_class_settings(self, for_self=False):
-        """ Get all class and instance variables.
-        - __dict__ is not enough.
-        - namespace module keys, to be usable directly, or via module instance (foo_bar vs foo.bar)
-        """
-        rs = {}
-        def is_valid(key, value):
-            # TODO: only allow strings, numbers?
-            if not key.startswith('__')\
-                and not inspect.ismethod(value)\
-                and not inspect.isfunction(value)\
-                and not inspect.isclass(value):
-                return True
-            return False
-        def is_for_module(key):
-            if key \
-                    and not for_self \
-                    and key not in self.reserved_keys \
-                    and key in module_keys:
-                        return True
-            return False
-        values = inspect.getmembers(self)
-        module_keys = self.__class__.__dict__.keys()
-        for key,value in values:
-            if is_valid(key, value):
-                if is_for_module(key):
-                    namespaced_key = key
-                    if not key.startswith('{0}_'.format(self.get_name())):
-                        namespaced_key = '{0}_{1}'.format(self.get_name(), key)
-                    rs[namespaced_key] = value # module scope
-                else:
-                    rs[key] = value # global scope
-        return rs
-
-    def get_ctx(self, **kwargs):
-        """ Gather and evaluate variables for context """
-        rs = LocalDict()
-        for k,v in enumerate(self.get_needs()):
-            rs.update(**v.get_class_settings())
-        rs.update(**self.get_class_settings(for_self=False))
-        rs.update(**self.get_class_settings(for_self=True))
-        rs.update(**kwargs)
-        for k,v in rs.iteritems():
-            rs[k] = formatloc(v, rs)
-        return rs
-    
-    def get_needs(self, as_str=False):
-        """ Return module dependendies defined in needs=[] and need_* """
-        key = 'get_needs.{0}'.format(as_str)
-        if not self._CACHE.get(key):
-            rs = set()
-            for k in self.needs:
-                name = k.split('.')[-1]
-                if as_str:
-                    rs.add(k)
-                else:
-                    rs.add(getattr(self, name))
-
-            for k,v in self.get_class_settings(for_self=True).iteritems():
-                if k.startswith('need_'):
-                    name = v.split('.')[-1]
-                    if as_str:
-                        rs.add(v)
-                    else:
-                        rs.add(getattr(self, name))
-            self._CACHE[key] = list(rs)
-        return self._CACHE[key]
-
-
     def settings(self):
         return {}
 
     def cli_interface(self, action=None, *args, **kwargs):
         raise Exception("TODO")
 
-    def get_and_load_need(self, key, *args, **kwargs):
-        """ On-demand needs=[] resolve """
-        name = key.split('.')[-1]
-        module = import_string(key)
-        fn = getattr(module, name)
-
-        instance = fn(ctx_parent=self.parent_context())
-        setattr(self, name, instance)
-
-        return instance
-
-    def release_exists(self):
-        return self.exists('{basepath}releases/{release}')
-
     def latest_release(self):
         rel = self.sudo("cd {basepath} && readlink www").strip()
         if rel:
             return rel.replace('releases/', '')
         return env.release
-
-    def has_need(self, string):
-        return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
-
-    def __getattr__(self, key):
-        try:
-            return self.__dict__[key]
-        except Exception, e:
-            # lazy-load dependencies
-            if not key.startswith('__') and self.has_need(key):
-                return self.get_and_load_need(self.find_need(key),
-                        *self.args,
-                        **self.kwargs)
-            raise
 
     def __unicode__(self):
         return unicode(self.get_name())
@@ -526,20 +531,12 @@ def register(klass, *args, **kwargs):
     return fabric_task, klass
 
 
-class Runner(DeployMixin):
-    """ alias Deploy """
-    def __init__(self, state={}):
+class Runner(DeployMixin, NeedMixin):
+    needs = ['soppa.operating','soppa.remote']
+    def __init__(self, state={}, *args, **kwargs):
+        super(Runner, self).__init__(*args, **kwargs)
         self.state = state
-        self._CACHE = {}
         self.module = None
-
-    def fmt(self, val, *args, **kwargs):
-        return formatloc(val, env)
-
-    def ask_sudo_password(self, capture=False):
-        if env.get('password') is None:
-            print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
-            env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
 
     def setup(self, module):
         self.module = module
@@ -552,7 +549,15 @@ class Runner(DeployMixin):
         needs = module.get_needs()
         self.configure([module] + needs)
 
-        module.setup()
+        self.tar_from_git()
+        self.upload_tar()
+
+        module.go()
+        module.remote.setup_runner()
+        #self.remote.setup_runner() -- remote assumes Soppa-inheritance
+
+        self.ownership()
+        self.symlink_release()
 
         self.restart(needs)
 
@@ -563,13 +568,12 @@ class Runner(DeployMixin):
 
         for need in needs:
             need.configure()
-
             need.copy_configuration()
-
             need.setup_needs()
 
         if newProject:
-            raise Exception('Default Configuration generated into config/. Review settings and configure any changes. Next run is live')
+            raise Exception("""NOTICE: Default Configuration generated into {0}.
+            Review settings and configure any changes. Next run is live""".format(env.local_conf_path))
 
         # Runner needs packages instances
         packages = self.module.packman().get_packages()
@@ -577,6 +581,14 @@ class Runner(DeployMixin):
         self.module.packman().download_packages(packages)
         self.module.packman().sync_packages(packages)
         self.module.packman().install_packages(packages)
+
+    def fmt(self, val, *args, **kwargs):#TODO: belongs elsewhere
+        return self.module.fmt(val)
+
+    def ask_sudo_password(self, capture=False):
+        if env.get('password') is None:
+            print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
+            env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
 
     def restart(self, needs):
         for need in needs:

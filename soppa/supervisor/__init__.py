@@ -1,18 +1,19 @@
-import os, time
+import time
 
 from soppa.contrib import *
-from soppa.deploy import DeployFrame
 
-"""
-Supervisor: http://supervisord.org/
-"""
 
-class Supervisor(DeployFrame):
+class Supervisor(Soppa):
+    """
+    Supervisor: http://supervisord.org/
+    """
     conf_dir='/etc/supervisor/conf.d/'
     opt='-c "/etc/supervisord.conf"'
     user='{deploy_user}'
 
-    needs=DeployFrame.needs+[
+    needs=[
+        'soppa.file',
+        'soppa.operating',
         'soppa.pip',
         'soppa.template',
         'soppa.virtualenv',

@@ -4,7 +4,6 @@ from .apt import *
 from .apache import *
 from .celery import *
 from .collectd import *
-from .deploy import *
 from .django import *
 from .dnsmasq import *
 from .elasticsearch import *

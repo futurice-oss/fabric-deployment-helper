@@ -3,44 +3,36 @@ import os, sys, time, copy, inspect, logging
 from pprint import pprint as pp
 
 from fabric.api import env, task
-from soppa.tools import here
+from soppa.tools import here, ObjectDict
 
 log = logging.getLogger('soppa')
 
-# GLOBALS
-env.ctx = {}
-env.local_project_root = here(fn=inspect.getfile(sys._getframe(1)))
-env.basedir = os.getcwd() + os.sep
-env.soppadir = here()
-
-env.DEBUG = False
-env.TESTING = False
-env.colorize_errors = True
-env.deploy_os = 'debian'
-env.deploy_user = 'www-data'
-env.deploy_group = 'www-data'
-env.deploy_tarball = '/tmp/{release}.tar.gz'
-env.user = 'root'# os.environ.get('USER', 'root')
-env.owner = 'www-data'
-env.config_dirs = ['config/',]
-env.local_conf_path = 'config/'
-
-env.project = None # set in fabfile *only*
-env.www_root = '/srv/www/'
-env.basepath = '{www_root}{project}/'
-env.project_root = '{basepath}/www/'
-
-env.release = time.strftime('%Y%m%d%H%M%S')
-env.release_path = '{basepath}releases/{release}/'
-
-env.branch = 'master'
-
+# FABRIC
 env.use_ssh_config = True
-
-env.local_deployment = False
-env.performed = {}
+env.colorize_errors = True
+env.user = 'root'# os.environ.get('USER', 'root')
+# /FABRIC
 env.CACHE = {}
-env.packmans = [
+env.ctx = {}
+
+# Soppa
+#c = SOPPA_DEFAULTS = ObjectDict()
+c = env
+c.local_project_root = here(fn=inspect.getfile(sys._getframe(1)))
+c.basedir = os.getcwd() + os.sep
+c.soppadir = here()
+
+c.deploy_os = 'debian'
+c.config_dirs = ['config/',]
+c.local_conf_path = 'config/'
+
+c.www_root = '/srv/www/'
+c.basepath = '{www_root}{project}/'
+c.project_root = '{basepath}/www/'
+
+c.local_deployment = False
+c.performed = {}
+c.packmans = [
     'soppa.internal.packagehandler.Pip',
     'soppa.internal.packagehandler.PipVenv',
     'soppa.internal.packagehandler.Apt']

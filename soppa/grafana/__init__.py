@@ -1,12 +1,12 @@
-import os
-
 from soppa.contrib import *
-from soppa.deploy import DeployFrame
 
-class Grafana(DeployFrame):
+class Grafana(Soppa):
     url='http://grafanarel.s3.amazonaws.com/grafana-1.5.3.tar.gz'
     servername='grafana.dev'
-    needs=DeployFrame.needs+[
+    needs=[
+        'soppa.file',
+        'soppa.operating',
+
         'soppa.package',
         'soppa.template',
         'soppa.nginx',

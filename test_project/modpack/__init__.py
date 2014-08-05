@@ -1,5 +1,5 @@
 from soppa.contrib import *
 
 class ModPack(Soppa):
-    pass
+    needs = ['soppa.file']
 modpack = ModPack

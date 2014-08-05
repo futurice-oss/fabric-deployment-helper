@@ -1,13 +1,10 @@
 from soppa.contrib import *
 
-"""
-Sentry is a Django-project using its own conventions including manage.py as sentry.
-
-Assuming custom sentry.conf.py as project-specific ./conf.py
-"""
-from soppa.python import PythonDeploy
-
-class Sentry(PythonDeploy):
+class Sentry(Soppa):
+    """
+    Sentry is a Django-project using its own conventions including manage.py as sentry.
+    Assuming custom sentry.conf.py as project-specific ./conf.py
+    """
     need_web='soppa.nginx'
     need_db='soppa.postgres'
     django_settings='conf'
@@ -17,7 +14,12 @@ class Sentry(PythonDeploy):
             'sentry_servername',
             'need_web',
             'need_db']
-    needs=PythonDeploy.needs+[
+    needs=['soppa.virtualenv',
+        'soppa.supervisor',
+        'soppa.redis',
+        'soppa.pip',
+        'soppa.remote',
+
         'soppa.template',
     ]
 

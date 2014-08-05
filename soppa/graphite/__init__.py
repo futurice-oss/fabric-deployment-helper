@@ -1,8 +1,6 @@
 from soppa.contrib import *
 
-from soppa.python import PythonDeploy
-
-class Graphite(PythonDeploy):
+class Graphite(Soppa):
     """
     Graphite by default installs to /opt/graphite/
     Carbon configuration from: https://github.com/graphite-project/carbon/tree/master/conf
@@ -12,11 +10,16 @@ class Graphite(PythonDeploy):
     host='localhost'
     carbon_path='/opt/graphite/'
     required_settings=['host']
-    needs=PythonDeploy.needs+[
-        'soppa.template',
+    needs=['soppa.template',
         'soppa.nginx',
         'soppa.nodejs',
         'soppa.statsd',
+
+        'soppa.virtualenv',
+        'soppa.supervisor',
+        'soppa.redis',
+        'soppa.pip',
+        'soppa.remote',
     ]
 
     def go(self):

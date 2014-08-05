@@ -12,11 +12,12 @@ def escape_bad_matches(s):
                     r'{\1}', s)
     return s
 
+def fmtkeys(s):
+    return [k[1] for k in string.Formatter().parse(s) if k[1]]
+
 def formatloc(s, ctx={}, **kwargs):
     """ Lazy evaluation for strings """
     if not isinstance(s, basestring) and not callable(s):
-        return s
-    if 'raw' in kwargs:
         return s
     for times in range(6):
         kw = {}

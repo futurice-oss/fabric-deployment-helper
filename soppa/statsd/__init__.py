@@ -1,9 +1,9 @@
 from soppa.contrib import *
-from soppa.deploy import DeployFrame
 
-class StatsD(DeployFrame):
-    needs=DeployFrame.needs+[
-        'soppa.template',
+class StatsD(Soppa):
+    needs=[
+        'soppa.file',
+        'soppa.operating',
         'soppa.supervisor',
         'soppa.virtualenv',
         'soppa.nodejs',

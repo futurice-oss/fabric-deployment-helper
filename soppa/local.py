@@ -16,8 +16,8 @@ def aslocal(prompt=True):
         osx()
 
     if prompt:
-        from soppa.deploy import DeployFrame
-        dep = DeployFrame()
+        from soppa.contrib import Runner
+        dep = Runner()
         dep.ask_sudo_password()
 
 @task

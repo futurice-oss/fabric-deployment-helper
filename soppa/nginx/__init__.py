@@ -1,13 +1,13 @@
 from soppa.contrib import *
-from soppa.deploy import DeployFrame
 
-class Nginx(DeployFrame):
+class Nginx(Soppa):
     dir='/srv/nginx/'
-    user=env.deploy_user
-    group=env.deploy_group
+    user=None
+    group=None
     restart_command='/etc/init.d/nginx restart'
     start_command='/etc/init.d/nginx start'
     needs=[
+        'soppa.file',
         'soppa.operating',
         'soppa.template',
     ]
@@ -31,8 +31,6 @@ class Nginx(DeployFrame):
         self.up('nginx.conf', '{nginx_dir}conf/')
 
         if not self.exists('{nginx_dir}sbin/nginx'):
-            sctx = self.get_ctx()
-            sctx['nginx_dir'] = self.dir.rstrip('/')
             self.up('nginx.bash', '/usr/src/')
             with self.cd('/usr/src/'):
                 if self.operating.is_osx():
