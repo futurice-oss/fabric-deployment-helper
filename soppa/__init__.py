@@ -3,9 +3,7 @@ import os, sys, time, copy, inspect, logging
 from pprint import pprint as pp
 
 from fabric.api import env, task
-from soppa.tools import here, ObjectDict
-
-log = logging.getLogger('soppa')
+from soppa.internal.tools import here, ObjectDict
 
 # FABRIC
 env.use_ssh_config = True
@@ -14,23 +12,18 @@ env.user = 'root'# os.environ.get('USER', 'root')
 # /FABRIC
 env.CACHE = {}
 env.ctx = {}
+env.local_deployment = False
 
 # Soppa
-#c = SOPPA_DEFAULTS = ObjectDict()
-c = env
+c = SOPPA_DEFAULTS = ObjectDict()
 c.local_project_root = here(fn=inspect.getfile(sys._getframe(1)))
 c.basedir = os.getcwd() + os.sep
 c.soppadir = here()
 
-c.deploy_os = 'debian'
 c.config_dirs = ['config/',]
 c.local_conf_path = 'config/'
 
-c.www_root = '/srv/www/'
-c.basepath = '{www_root}{project}/'
-c.project_root = '{basepath}/www/'
-
-c.local_deployment = False
+#c.use_sudo = False
 c.performed = {}
 c.packmans = [
     'soppa.internal.packagehandler.Pip',

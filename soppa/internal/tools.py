@@ -42,15 +42,15 @@ class Upload(object):
 
     def config_dirs(self):
         dirs = []
-        dirs.append(os.path.join(self.instance.env.basedir,
-            self.instance.env.local_conf_path,
+        dirs.append(os.path.join(self.instance.soppa.basedir,
+            self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
-        dirs.append(os.path.join(self.instance.env.local_project_root,
-            self.instance.env.local_conf_path,
+        dirs.append(os.path.join(self.instance.soppa.local_project_root,
+            self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
         dirs.append(os.path.join(self.instance.module_path(),
-            self.instance.env.local_conf_path, ''))
-        dirs += self.instance.env.config_dirs
+            self.instance.soppa.local_conf_path, ''))
+        dirs += self.instance.soppa.config_dirs
         return dirs
 
     def find(self, path, needle):

@@ -1,10 +1,9 @@
 import unittest, copy, os
 import shutil
 
-from soppa.ingredients import *
-from soppa.local import aslocal
-from soppa.fmt import fmtkeys, formatloc
-from soppa.tools import ObjectDict
+from soppa.internal.ingredients import *
+from soppa.internal.fmt import fmtkeys, formatloc
+from soppa.internal.tools import ObjectDict, Upload
 
 # failures, if not importing ahead. Why?
 from soppa.internal.packagehandler import Pip
@@ -79,11 +78,11 @@ class SoppaTest(BaseSuite):
         self.assertTrue(p.has_need('virtualenv'))
         self.assertTrue(p.virtualenv != {})
 
-        env.ctx['virtualenv'] = {'local_conf_path': '/tmp/'}
-        p = pip()
+        p = pip(dict(virtualenv_local_conf_path='/tmp/'))
         self.assertEquals(p.virtualenv.local_conf_path, '/tmp/')
         v = virtualenv()
-        self.assertEquals(v.local_conf_path, '/tmp/')
+        with self.assertRaises(AttributeError):
+            v.local_conf_path
 
     def test_variable_namespacing(self):
         ctx = {'host': 'localhost.here'}
@@ -151,7 +150,7 @@ class SoppaTest(BaseSuite):
         self.assertEquals(r, '100')
 
     def test_set_setting(self):
-        aslocal(prompt=False)
+        env.local_deployment = True
         start_str = """hello world\nhawai\n"""
         ff = file({})
         f = ff.tmpfile(start_str)
@@ -175,27 +174,21 @@ class PatchTest(BaseSuite):
     def test_env_function(self):
         def _(kw={}):
             return 100
-        env.fntest = _
-        self.assertEqual(formatloc(env.fntest, {}), _())
+        self.assertEqual(formatloc(_, {}), 100)
 
 class ModuleTest(BaseSuite):
 
     def test_package(self):
-        self.assertEquals(package({}).dummy('John'), 'John')
+        self.assertEquals(modpack({}).dummy('John'), 'John')
 
     def test_module_packages(self):
-        env.ctx = {
-            'moda':
-                {'project': 'name_moda'},
-            'modb':
-                {'project': 'name_modb'},
-        }
-        ma = moda()
-        mb = modb()
+        ma = moda(dict(project='name_moda', modb_project='name_modb_override'))
+        mb = modb(dict(project='name_modb'))
         ma.setup()
         self.assertNotEqual(ma.version, mb.version)
         self.assertEquals(ma.project, 'name_moda')
-        self.assertEquals(ma.modb.project, 'name_modb')
+        self.assertEquals(mb.project, 'name_modb')
+        self.assertEquals(ma.modb.project, 'name_modb_override')
         ma = moda({'project': 'king'})
         self.assertEquals(ma.project, 'king')
 
@@ -203,7 +196,7 @@ class ModuleTest(BaseSuite):
         ma = moda()
         self.assertEquals(ma.var, 'moda')
         self.assertEquals(ma.modb.var, 'modb')
-        with self.assertRaises(KeyError):
+        with self.assertRaises(AttributeError):
             ma.modc.var
 
 class WaterTest(BaseSuite):
@@ -217,7 +210,5 @@ class WaterTest(BaseSuite):
         self.assertEqual(i.modc_left, 'right')
         self.assertEqual(i.modc_hello, 'world')
 
-        env.ctx['modc'] = {}
-        env.ctx['modc']['modc_left'] = 'up'
-        i = modc()
+        i = modc(dict(modc_left='up'))
         self.assertEqual(i.modc_left, 'up')

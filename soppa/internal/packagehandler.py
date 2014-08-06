@@ -48,17 +48,17 @@ class PackageHandler(object):
 
     def defaults_conf_path(self):
         return os.path.join(self.need.module_path(),
-                self.need.local_conf_path,
+                self.need.env.local_conf_path,
                 'defaults',
                 '')
     
     def target_conf_path(self):
         return os.path.join(self.need.local_project_root,
-            self.need.local_conf_path,
+            self.need.env.local_conf_path,
             self.need.get_name(), '')
 
     def target_need_conf_path(self, path=None):
-        return os.path.join(self.need.local_conf_path,
+        return os.path.join(self.need.env.local_conf_path,
                     self.need.get_name(),
                     path or self.path)
 

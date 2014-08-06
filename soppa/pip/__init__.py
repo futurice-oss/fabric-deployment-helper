@@ -5,7 +5,7 @@ from soppa.contrib import *
 class Pip(Soppa):
     requirements='{env.local_project_root}requirements.txt'
     packages_from='{env.local_project_root}dist/'
-    packages_to='{env.www_root}dist/'
+    packages_to='{release.www_root}dist/'
     extra_index=''
     dirhashes = {}
     needs=[

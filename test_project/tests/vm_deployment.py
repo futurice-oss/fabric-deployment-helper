@@ -2,7 +2,8 @@ import unittest, copy, os
 from pprint import pprint
 from StringIO import StringIO
 
-from soppa.ingredients import *
+from soppa.internal.ingredients import *
+from soppa.internal.runner.default import *
 
 env.password = ''
 env.mysql_password = os.environ.get('MYSQL_PASS', '')
@@ -42,11 +43,13 @@ class DjangoDeployTestCase(BaseSuite):
 
 class SingleTestCase(BaseSuite):
     def test_grafana(self):
-        env.project = 'grafana'
-        ctx = dict(
+        state=dict(
+            release_deploy_user='root',
+            release_project='grafana',
+            release_host='grafana.dev',
         )
         r = Runner()
-        g = grafana(ctx=ctx)
+        g = grafana(state)
         r.setup(g)
 
 class DeployTestCase(BaseSuite):
@@ -92,8 +95,8 @@ def run_deployment_tests():
     runner = unittest.TextTestRunner(stream=stream)
     alltests = unittest.TestSuite(
         map(unittest.makeSuite, [
-            DjangoDeployTestCase,
-            DeployTestCase,
+            #DjangoDeployTestCase,
+            #DeployTestCase,
             SingleTestCase,
     ]))
     result = runner.run(alltests)

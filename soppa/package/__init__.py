@@ -1,32 +1,29 @@
+import hashlib
 from soppa.contrib import *
 
 class Package(Soppa):
-    release = time.strftime('%Y%m%d%H%M%S')
-    release_path = '{basepath}releases/{release}/'
+    dir = '{release.basepath}packages/'
     needs = [
+        'soppa.release',
         'soppa.file',
     ]
 
-    def file_as_release(self, url):
-        """ Download a file to be used as a release """
-        package_pkg = self.package_path(url)
-        self.dirs()
-        if not self.exists(package_pkg):
-            with self.cd('{basepath}'):
-                self.wget(url, package_pkg)
-        with self.cd('{basepath}'):
-            self.run('mkdir -p releases/{release}')
-            if self.package_in_dir(package_pkg, self.package_name(url)):
-                self.sudo("tar --strip-components=1 -zxf {0} -C releases/{1}"\
-                    .format(package_pkg, self.release))
-            else:
-                self.sudo("tar -zxf {0} -C releases/{1}"\
-                    .format(package_pkg, '{release}'))
-        self.ownership()
-        self.symlink_release()
+    def file_as_release(self, url, dest):
+        """ Download a TAR file to be used as a release """
+        download = '{}{}'.format(self.dir, self.id(url))
+        if not self.exists(download):
+            self.wget(url, download)
+        self.run('mkdir -p {dest}', dest=dest)
+        if self.package_in_dir(download, self.package_name(url)):
+            self.sudo("tar --strip-components=1 -zxf {} -C {}".format(download, dest))
+        else:
+            self.sudo("tar -zxf {} -C {}".format(download, dest))
 
-    def dummy(self, name=None):# for testing
-        return name
+    def id(self, url):
+        return hashlib.md5(url).hexdigest()
+
+    def unpack(self, path):
+        pass
 
     def wget(self, url, to):
         self.sudo("""wget --no-cookies \
@@ -34,24 +31,16 @@ class Package(Soppa):
         "{0}" -L -O {1}""".format(url, to))
 
     def package_in_dir(self, pkg, needle):
-        output = self.sudo("tar -tvf "+pkg+"|awk '{print $6}'")
+        """ Determines if package contents are unpacked into a subfolder of identical name """
+        with self.hide('output'):
+            output = self.sudo("tar -tvf "+pkg+"|awk '{print $6}'")
         lines = [k for k in [line.strip() for line in unicode(output).split("\n")] if k]
         return all([k.startswith(needle) for k in lines])
 
-    def package_path(self, url):
-        pkg = url.split('/')[-1]
-        to = '{basepath}packages/'
-        return to + pkg
-
     def package_name(self, url, by='/'):
+        """ Guess package filename from URL """
         pkg = url.split(by)[-1]
         pkg = pkg.split('.')[0]
         return pkg
-
-    def download_package(self):
-        with self.cd('{basepath}'):
-            self.run('mkdir -p releases/{release}')
-            self.run('tar zxf packages/{release}.tar.gz -C releases/{release}')
-        self.local('rm {deploy_tarball}')
 
 package_task, package = register(Package)

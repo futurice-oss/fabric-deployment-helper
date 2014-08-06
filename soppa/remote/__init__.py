@@ -39,11 +39,12 @@ class Remote(Soppa):
         - create dist/runner.py for executing remote commands
         """
         env.sync_filename = '/tmp/{0}_env.txt'.format(time.time())
-        env_copy = self
+        env_copy = self.env
         env_copy.use_ssh_config = False
         env_copy.host = False
         env_copy.host_string = False
         env_copy.local_deployment = True
+        # TODO: add context from each need to repopulate
         with self.file.tmpfile(self.to_json(env_copy, cls=SilentEncoder)) as f:
             self.up(f.name, env.sync_filename)
 

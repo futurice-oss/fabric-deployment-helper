@@ -5,7 +5,9 @@ from soppa.contrib import *
 class ElasticSearch(Soppa):
     url='https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.1.1.tar.gz'
     servername='elasticsearch.dev'
-    needs = ['soppa.supervisor', 'soppa.nginx', 'soppa.package']
+    needs = ['soppa.supervisor',
+            'soppa.nginx',
+            'soppa.package',]
 
     def setup():
         self.supervisor.up('elasticsearch_supervisor.conf', '{supervisor.conf_dir}')

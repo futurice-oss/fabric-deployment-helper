@@ -23,7 +23,6 @@ class Template(Soppa):
         assert '{' not in filename
         for k,v in context.iteritems():
             context[k] = self.fmt(v, context)
-        use_sudo = use_sudo or context.get('use_sudo', False)
         data = self.jinja.get_tpl(tpl).render(**context)
         tf = self.file.tmpfile(data)
         # DIFF: compare against root folder (that has the current version) instead of release folder
