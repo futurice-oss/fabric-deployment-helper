@@ -4,6 +4,7 @@ class Mysql(Soppa):
     name='{project}'
     user='root'
     password=''
+    needs = Soppa.needs+['soppa.pip','soppa.apt']
 
     def setup(self):
         with settings(warn_only=True):

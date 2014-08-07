@@ -8,7 +8,7 @@ class Rsync(Soppa):
         fmt = self.fmt('{env.user}@{release.host}:')
         if self.env.use_ssh_config:#TODO:should never need to self.env
             fmt = self.fmt('{env.user}@{env.host_string}:')
-        if self.soppa.local_deployment:
+        if self.env.local_deployment:
             fmt = ''
         return fmt
 

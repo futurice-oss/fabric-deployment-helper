@@ -52,13 +52,15 @@ class PackageManager(object):
     def sync_packages(self, packages):
         for handler, pkg in packages.iteritems():
             filepath = handler.target_need_conf_path()
-            handler.get_need().sync()
+            if pkg['package']:
+                handler.get_installer().sync()
 
     def download_packages(self, packages):
         """ Download local copies of packages """
         for handler, pkg in packages.iteritems():
             filepath = handler.target_need_conf_path()
-            handler.get_need().download(filepath, new_only=True)
+            if pkg['package']:
+                handler.get_installer().download(filepath, new_only=True)
 
     def install_packages(self, packages):
         for handler, pkg in packages.iteritems():

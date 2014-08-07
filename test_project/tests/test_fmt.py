@@ -40,3 +40,17 @@ class FormatTest(BaseSuite):
         self.assertEquals(m.modc.mangle_self, m.modc.modc_left)
         self.assertEquals(m.modc.__dict__['mangle'], '{modc_left}')
         self.assertEquals(m.modc.__dict__['mangle_self'], '{modc_left}')
+
+    def test_resolution_order(self):
+        m = modpack()
+        self.assertEquals(m.release.project, None)
+        self.assertEquals(m.modc.release.project, None)
+
+        m = modpack(dict(
+            release_project='foo',
+            modc_release_project='bar',
+            ))
+        self.assertEquals(m.release.project, 'foo')
+        self.assertEquals(m.modc.release.project, 'bar')
+        m.modc.release.project = 'omg'
+        self.assertEquals(m.modc.release.project, 'omg')

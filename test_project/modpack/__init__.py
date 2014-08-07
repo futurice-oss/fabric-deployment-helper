@@ -1,7 +1,7 @@
 from soppa.contrib import *
 
 class ModPack(Soppa):
-    needs = ['test_project.modc']
+    needs = ['soppa.release', 'test_project.modc']
     soreal = True
     modc_soreal = False
     modc_mangle = '{modc.modc_left}'

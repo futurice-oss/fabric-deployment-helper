@@ -133,8 +133,8 @@ class ApiMixin(object):
         to = to or self.conf_dir
         #TODO:inspecting frames and wrappers do not seem to play well together
         #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
-        upload = Upload(frm, to, instance=self.parent(), caller_path=caller_path)
-        self.template.up(*upload.args, context=self.parent())
+        upload = Upload(frm, to, instance=self.parent, caller_path=caller_path)
+        self.template.up(*upload.args, context=self.parent.__dict__)
 
 class DeployMixin(ApiMixin):
     def setup_needs(self):
@@ -228,7 +228,7 @@ class NeedMixin(InspectMixin):
         fn = getattr(module, name)
         """
         Pass configuration from parent.
-        - anything namespaced with need_*
+        - own namespace
         - self.alias_var => alias.var, alias.alias_var
         To prevent recursion:
         - {alias.foo} => {foo}
@@ -257,20 +257,14 @@ class NeedMixin(InspectMixin):
                     cfg.setdefault(k, v)
             return cfg
         parent_values = {}
-        for name in needs_keys:
+        for name in [alias]:
             parent_values.update(**need_values(curscope, name))
 
         context = {}
         context.update(**parent_values)
-        context.update(**self.parent_context())
+        context['parent_instance'] = self
 
         return fn(ctx_parent=context)
-
-    def parent_context(self):
-        """ Context passed for dependant needs """
-        return {
-            'parent_instance': self,
-        }
 
 class NoOp(object):
     succeeded = True

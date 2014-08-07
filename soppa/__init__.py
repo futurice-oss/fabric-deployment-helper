@@ -13,6 +13,7 @@ env.user = 'root'# os.environ.get('USER', 'root')
 env.CACHE = {}
 env.ctx = {}
 env.local_deployment = False
+env.performed = {}
 
 # Soppa
 c = SOPPA_DEFAULTS = ObjectDict()
@@ -23,8 +24,6 @@ c.soppadir = here()
 c.config_dirs = ['config/',]
 c.local_conf_path = 'config/'
 
-#c.use_sudo = False
-c.performed = {}
 c.packmans = [
     'soppa.internal.packagehandler.Pip',
     'soppa.internal.packagehandler.PipVenv',

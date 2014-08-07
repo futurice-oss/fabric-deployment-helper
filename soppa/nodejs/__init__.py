@@ -13,8 +13,9 @@ class NodeJS(Soppa):
     symlink_npm = ['lessc',]
 
     def setup(self):
+        # TODO: check nodejs version, if exists, for upgrades
         with self.virtualenv.activate(), self.cd('{basepath}'):
-            self.sudo('[ -f "{nodejs_binary_dir}node" ] || nodeenv -p --node={nodejs_version}')
+            self.sudo('[ -f "{binary_dir}node" ] || nodeenv -p --node={version}')
 
         with self.virtualenv.activate():
             # TODO: config/MODULE/package.json, packages.npm

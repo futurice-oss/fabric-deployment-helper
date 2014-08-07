@@ -11,7 +11,7 @@ class Nginx(Soppa):
         'soppa.operating',
         'soppa.template',
     ]
-    conf_dir = '{nginx_dir}conf/sites-enabled/'
+    conf_dir = '{dir}conf/sites-enabled/'
 
     def go(self):
         self.sudo('mkdir -p {nginx_conf_dir}')

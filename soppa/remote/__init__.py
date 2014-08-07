@@ -10,8 +10,8 @@ class SilentEncoder(json.JSONEncoder):
             return None
 
 class Remote(Soppa):
-    runner_path = '{basepath}releases/runner.py'
-    needs=[
+    runner_path = '{root.release.basepath}releases/runner.py'
+    needs=Soppa.needs+[
         'soppa.file',
         'soppa.virtualenv',
         'soppa.template',
@@ -22,7 +22,7 @@ class Remote(Soppa):
 
     def run_cmd(self, cmd):#TODO:rename as remote_cmd
         self.sync_local_fabric_env()
-        with self.virtualenv.activate() as a, self.cd(self.release_path) as b:
+        with self.virtualenv.activate(), self.cd(self.root.release.release_path):
             if env.local_deployment:
                 fn = self.file.import_string(cmd)
                 fn()

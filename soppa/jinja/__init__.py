@@ -9,7 +9,7 @@ class Jinja(Soppa):
             '/',
             self.local_module_conf_path(),
             self.module_conf_path(),
-            self.basedir,
+            self.soppa.basedir,
             ])
         environ = jinja2.Environment(loader=loader, undefined=jinja2.StrictUndefined)
         return environ.get_template(path)

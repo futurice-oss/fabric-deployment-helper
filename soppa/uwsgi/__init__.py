@@ -1,29 +1,30 @@
 from soppa.contrib import *
 
 class Uwsgi(Soppa):
-    processes=2
-    threads=2
-    wsgi='{project}.wsgi:application'
-    socket='127.0.0.1:5900'
-    stats='127.0.0.1:9191'
-    needs = [
+    """
+    UWSGI is installed into a virtual environment, with configs going under parent, when isntalled as a need.
+    """
+    processes = 2
+    threads = 2
+    wsgi = '{root.release.project}.wsgi:application'
+    socket = '127.0.0.1:5900'
+    stats = '127.0.0.1:9191'
+    needs = Soppa.needs+[
         'soppa.file',
         'soppa.operating',
         'soppa.virtualenv',
         'soppa.linux',
         'soppa.template',
         'soppa.pip',
+        'soppa.apt',
     ]
-    need_release = {
-        'project': 'uwsgi',
-    }
-    conf_dir = '{release.basepath}config/vassals/'
+    release_project = 'uwsgi'
+    conf_dir = '{root.release.basepath}config/'
 
     def go(self):
-        """ touch configs to reload, otherwise start uwsgi """
-        self.sudo('mkdir -p {release.basepath}config/vassals/')
-        self.up('uwsgi.ini', '{release.basepath}config/vassals/')
-        self.sudo('chown -fR {deploy_user} {release.basepath}config/')
+        self.sudo('mkdir -p {conf_dir}')
+        self.up('uwsgi.ini', '{conf_dir}vassals/')# should ensure dir exists before uploading?
+        self.sudo('chown -fR {root.release.deploy_user} {root.release.basepath}config/')
 
     def restart(self):
         if self.linux.running(r"ps auxww|grep uwsgi|grep [e]mperor"):
@@ -32,11 +33,11 @@ class Uwsgi(Soppa):
             self.cmd_start()
 
     def cmd_restart(self):
-        with self.cd('{release.basepath}config/vassals/'):
+        with self.cd('{conf_dir}vassals/'):
             self.sudo("find . -maxdepth 1 -mindepth 1 -type f -exec touch {} \+")
 
     def cmd_start(self):
         with self.virtualenv.activate():
-            self.sudo('uwsgi --emperor {release.basepath}config/vassals --uid {release.deploy_user} --gid {release.deploy_group} --daemonize {release.basepath}logs/{release.project}-emperor.log')
+            self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.release.deploy_user} --gid {root.release.deploy_group} --daemonize {root.release.basepath}logs/{root.release.project}-emperor.log')
 
 uwsgi_task, uwsgi = register(Uwsgi)

@@ -21,29 +21,29 @@ class Runner(DeployMixin, NeedMixin):
             self.module.release.dirs()
         self.module.release.ownership()
 
-        self.configure([module] + needs)
+        # configure
+        self.configure(needs + [module])
 
-        #self.module.git.source()
+        # setup
+        for need in needs:
+            need.setup_needs()
+
         module.go()
-        #module.remote.setup_runner()
-        #self.module.release.ownership()
-        #self.symlink_release()
 
         self.restart(needs)
 
     def configure(self, needs):
         newProject = False
-        if not os.path.exists(os.path.join(self.module.env.local_conf_path)):
+        if not os.path.exists(os.path.join(self.module.soppa.local_conf_path)):
             newProject = True
 
         for need in needs:
             need.configure()
             need.copy_configuration()
-            need.setup_needs()
 
         if newProject:
             raise Exception("""NOTICE: Default Configuration generated into {}.
-            Review settings and configure any changes. Next run is live""".format(self.module.env.local_conf_path))
+            Review settings and configure any changes. Next run is live""".format(self.module.soppa.local_conf_path))
 
         # Runner needs packages instances
         packages = self.module.packman().get_packages()

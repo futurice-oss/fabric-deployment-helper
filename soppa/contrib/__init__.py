@@ -110,9 +110,19 @@ class Soppa(DeployMixin, NeedMixin):
         self.is_performed(fn)
         env.performed[env.host_string][fn] = True
 
+    @property
     def parent(self):
-        # TODO: self.root() to traverse all the way
         return self.parent_instance if hasattr(self, 'parent_instance') else self
+
+    @property
+    def root(self):
+        result = self
+        while True:
+            identifier = id(result)
+            result = result.parent
+            if id(result)==identifier:
+                break
+        return result
 
     def fmt(self, string, **kwargs):
         """ Format a string.
@@ -129,11 +139,12 @@ class Soppa(DeployMixin, NeedMixin):
         Defaulting to empty strings, instead of exceptions because of that.
         """
         for times in range(6):
+            keys = []
             if isinstance(string, basestring):
                 string = escape_bad_matches(string)
                 if '{' not in string:
                     break
-            keys = fmtkeys(string)
+                keys = fmtkeys(string)
             kwargs_keys = kwargs.keys()
             for key in keys:
                 if key not in kwargs_keys:

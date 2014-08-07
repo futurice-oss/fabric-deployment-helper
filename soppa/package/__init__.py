@@ -2,7 +2,6 @@ import hashlib
 from soppa.contrib import *
 
 class Package(Soppa):
-    dir = '{release.basepath}packages/'
     needs = [
         'soppa.release',
         'soppa.file',
@@ -10,7 +9,7 @@ class Package(Soppa):
 
     def file_as_release(self, url, dest):
         """ Download a TAR file to be used as a release """
-        download = '{}{}'.format(self.dir, self.id(url))
+        download = '{}{}'.format(self.root.release.packages_path, self.id(url))
         if not self.exists(download):
             self.wget(url, download)
         self.run('mkdir -p {dest}', dest=dest)

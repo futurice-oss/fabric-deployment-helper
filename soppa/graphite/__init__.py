@@ -6,39 +6,42 @@ class Graphite(Soppa):
     Carbon configuration from: https://github.com/graphite-project/carbon/tree/master/conf
     """
     path='/opt/graphite/'
-    web_path='{graphite_path}webapp/graphite/'
+    pathweb='{path}webapp/graphite/'
     host='localhost'
-    carbon_path='/opt/graphite/'
+    carbon_path='{path}'
     required_settings=['host']
-    needs=['soppa.template',
-        'soppa.nginx',
+    need_web = 'soppa.nginx'
+    needs=Soppa.needs+[
+        'soppa.template',
         'soppa.nodejs',
         'soppa.statsd',
+
+        'soppa.apt',
+        'soppa.pip',
 
         'soppa.virtualenv',
         'soppa.supervisor',
         'soppa.redis',
-        'soppa.pip',
         'soppa.remote',
     ]
 
     def go(self):
-        self.sudo('mkdir -p {graphite_path}')
-        self.sudo('chown -R {deploy_user} {graphite_path}')
+        self.sudo('mkdir -p {path}')
+        self.sudo('chown -R {release.deploy_user} {path}')
 
-        with self.cd('{graphite_path}conf/') as b, self.mlcd('config/') as a:
-            self.up('carbon.conf', '{graphite_path}conf/carbon.conf')
-            self.up('storage-schemas.conf', '{graphite_path}conf/storage-schemas.conf')
+        with self.cd('{path}conf/') as b, self.mlcd('config/') as a:
+            self.up('carbon.conf', '{path}conf/carbon.conf')
+            self.up('storage-schemas.conf', '{path}conf/storage-schemas.conf')
             if not self.exists('graphite.wsgi'):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
-        with self.cd('{graphite_web_path}') as b, self.mlcd('config/') as a:
-            self.up('local_settings.py', '{graphite_web_path}')
-            self.sudo('chown {deploy_user} local_settings.py')
+        with self.cd('{pathweb}') as b, self.mlcd('config/') as a:
+            self.up('local_settings.py', '{pathweb}')
+            self.sudo('chown {release.deploy_user} local_settings.py')
 
         self.supervisor.up('graphite_supervisor.conf', '{supervisor_conf_dir}')
-        self.nginx.up('graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+        self.web.up('graphite_nginx.conf', '{web.conf_dir}')
 
-        with self.virtualenv.activate(), self.cd('{graphite_web_path}'):
+        with self.virtualenv.activate(), self.cd('{pathweb}'):
             self.sudo('python manage.py syncdb --noinput')
 
         # add system-wide python-cairo into virtualenv

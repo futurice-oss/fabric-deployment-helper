@@ -1,7 +1,7 @@
 from soppa.contrib import *
 
 class Grafana(Soppa):
-    url='http://grafanarel.s3.amazonaws.com/grafana-1.5.3.tar.gz'
+    url = 'http://grafanarel.s3.amazonaws.com/grafana-1.5.3.tar.gz'
     needs=[
         'soppa.file',
         'soppa.operating',
@@ -14,18 +14,18 @@ class Grafana(Soppa):
     need_web = 'soppa.nginx'
     web_host = 'grafana.dev'
     release_project = 'grafana'
-    release_path = '{release.basepath}releases/{release.time}/'
 
     def go(self):
-        print "GRAFANA SETUP"
+        # self.package.get_file(url, dest)
+        # - normal file download, ensures dest= exists
+        # self.release.package.get_file(url, dest)
+        # - handle dirs, ownership, symlink ... according to chosen need_release
         self.release.dirs()
-        self.package.file_as_release(self.url, dest=self.release_path)
-        # self.release.get_url
-        # self.release.tar.unpack()
+        self.package.file_as_release(self.url, dest=self.release.path)
         self.release.ownership()
         self.release.symlink()
 
-        self.web.up('grafana_nginx.conf', '{nginx_dir}conf/sites-enabled/')
-        self.up('config.js', '{project_root}')
+        self.web.up('grafana_nginx.conf', '{web.conf_dir}')
+        self.up('config.js', '{release.project_root}')
 
 grafana_task, grafana = register(Grafana)

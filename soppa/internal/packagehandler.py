@@ -48,17 +48,17 @@ class PackageHandler(object):
 
     def defaults_conf_path(self):
         return os.path.join(self.need.module_path(),
-                self.need.env.local_conf_path,
+                self.need.soppa.local_conf_path,
                 'defaults',
                 '')
     
     def target_conf_path(self):
-        return os.path.join(self.need.local_project_root,
-            self.need.env.local_conf_path,
+        return os.path.join(self.need.soppa.local_project_root,
+            self.need.soppa.local_conf_path,
             self.need.get_name(), '')
 
     def target_need_conf_path(self, path=None):
-        return os.path.join(self.need.env.local_conf_path,
+        return os.path.join(self.need.soppa.local_conf_path,
                     self.need.get_name(),
                     path or self.path)
 
@@ -92,34 +92,35 @@ class PackageHandler(object):
     def requirementName(self, name):
         return name.split('==')[0]
 
-    def get_need(self):
-        key = 'package.handler.need.{0}'.format(self.need_module)
-        if not self._CACHE.get(key):
-            name = self.need_module.split('.')[-1]
-            module = import_string(self.need_module)
-            self._CACHE[key] = getattr(module, name)()
-        return self._CACHE[key]
-
     def install(self):
         raise Exception("Unconfigured")
 
+    def get_installer(self):
+        raise Exception("Not configured")
+
 class Apt(PackageHandler):
-    need_module = 'soppa.apt'
     path = 'apt_global.txt'
 
+    def get_installer(self):
+        return getattr(self.need, 'apt')
+
     def install(self, packages):
-        self.get_need().install(packages)
+        self.get_installer().install(packages)
 
 class Pip(PackageHandler):
-    need_module = 'soppa.pip'
     path = 'requirements_global.txt'
 
+    def get_installer(self):
+        return getattr(self.need, 'pip')
+
     def install(self, packages):
-        self.get_need().install_packages_global(packages)
+        self.get_installer().install_packages_global(packages)
 
 class PipVenv(Pip):
-    need_module = 'soppa.pip'
     path = 'requirements_venv.txt'
 
+    def get_installer(self):
+        return getattr(self.need, 'pip')
+
     def install(self, packages):
-        self.get_need().install_packages_venv(packages)
+        self.get_installer().install_packages_venv(packages)
