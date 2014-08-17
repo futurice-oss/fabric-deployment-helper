@@ -9,7 +9,6 @@ class Graphite(Soppa):
     pathweb='{path}webapp/graphite/'
     host='localhost'
     carbon_path='{path}'
-    required_settings=['host']
     need_web = 'soppa.nginx'
     needs=Soppa.needs+[
         'soppa.template',
@@ -27,19 +26,19 @@ class Graphite(Soppa):
 
     def go(self):
         self.sudo('mkdir -p {path}')
-        self.sudo('chown -R {release.deploy_user} {path}')
+        self.sudo('chown -R {deploy_user} {path}')
 
-        with self.cd('{path}conf/') as b, self.mlcd('config/') as a:
+        with self.cd('{path}conf/'):
             self.up('carbon.conf', '{path}conf/carbon.conf')
             self.up('storage-schemas.conf', '{path}conf/storage-schemas.conf')
             if not self.exists('graphite.wsgi'):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
-        with self.cd('{pathweb}') as b, self.mlcd('config/') as a:
-            self.up('local_settings.py', '{pathweb}')
-            self.sudo('chown {release.deploy_user} local_settings.py')
+        self.up('local_settings.py', '{pathweb}')
+        self.sudo('chown {deploy_user} {pathweb}local_settings.py')
 
-        self.supervisor.up('graphite_supervisor.conf', '{supervisor_conf_dir}')
-        self.web.up('graphite_nginx.conf', '{web.conf_dir}')
+        self.supervisor.up('graphite_supervisor.conf', '{supervisor.conf_dir}')
+        if self.has_need('nginx'):
+            self.web.up('graphite_nginx.conf', '{web.conf_dir}')
 
         with self.virtualenv.activate(), self.cd('{pathweb}'):
             self.sudo('python manage.py syncdb --noinput')

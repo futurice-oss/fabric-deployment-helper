@@ -9,7 +9,7 @@ class Supervisor(Soppa):
     """
     conf_dir='/etc/supervisor/conf.d/'
     opt='-c "/etc/supervisord.conf"'
-    user='{deploy_user}'
+    user='{root.deploy_user}'
 
     needs=[
         'soppa.file',

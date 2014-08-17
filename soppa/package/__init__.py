@@ -3,13 +3,12 @@ from soppa.contrib import *
 
 class Package(Soppa):
     needs = [
-        'soppa.release',
         'soppa.file',
     ]
 
     def file_as_release(self, url, dest):
         """ Download a TAR file to be used as a release """
-        download = '{}{}'.format(self.root.release.packages_path, self.id(url))
+        download = '{}{}'.format(self.root.packages_path, self.id(url))
         if not self.exists(download):
             self.wget(url, download)
         self.run('mkdir -p {dest}', dest=dest)

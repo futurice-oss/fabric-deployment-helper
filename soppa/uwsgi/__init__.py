@@ -6,7 +6,7 @@ class Uwsgi(Soppa):
     """
     processes = 2
     threads = 2
-    wsgi = '{root.release.project}.wsgi:application'
+    wsgi = '{root.project}.wsgi:application'
     socket = '127.0.0.1:5900'
     stats = '127.0.0.1:9191'
     needs = Soppa.needs+[
@@ -18,13 +18,13 @@ class Uwsgi(Soppa):
         'soppa.pip',
         'soppa.apt',
     ]
-    release_project = 'uwsgi'
-    conf_dir = '{root.release.basepath}config/'
+    project = 'uwsgi'
+    conf_dir = '{root.basepath}config/'
 
     def go(self):
         self.sudo('mkdir -p {conf_dir}')
         self.up('uwsgi.ini', '{conf_dir}vassals/')# should ensure dir exists before uploading?
-        self.sudo('chown -fR {root.release.deploy_user} {root.release.basepath}config/')
+        self.sudo('chown -fR {root.deploy_user} {root.basepath}config/')
 
     def restart(self):
         if self.linux.running(r"ps auxww|grep uwsgi|grep [e]mperor"):
@@ -38,6 +38,6 @@ class Uwsgi(Soppa):
 
     def cmd_start(self):
         with self.virtualenv.activate():
-            self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.release.deploy_user} --gid {root.release.deploy_group} --daemonize {root.release.basepath}logs/{root.release.project}-emperor.log')
+            self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.deploy_user} --gid {root.deploy_group} --daemonize {root.basepath}logs/{root.project}-emperor.log')
 
 uwsgi_task, uwsgi = register(Uwsgi)

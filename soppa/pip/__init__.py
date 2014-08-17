@@ -3,10 +3,9 @@ import hashlib, os, tempfile, re, inspect, sys, time, copy
 from soppa.contrib import *
 
 class Pip(Soppa):
-    requirements='{soppa.local_project_root}requirements.txt'
-    packages_from='{soppa.local_project_root}dist/'
-    packages_to='{release.www_root}dist/'
-    extra_index=''
+    packages_from = '{soppa.local_project_root}dist/'
+    packages_to = '{www_root}dist/'
+    extra_index = ''
     dirhashes = {}
     needs=[
         'soppa.virtualenv',
@@ -15,7 +14,6 @@ class Pip(Soppa):
         'soppa.linux',
         'soppa.rsync',
         'soppa.template',
-        'soppa.release',
     ]
 
     # DIST

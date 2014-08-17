@@ -29,8 +29,8 @@ class Template(Soppa):
         tf = self.file.tmpfile(data)
         # DIFF: compare against root folder (that has the current version) instead of release folder
         diff_filename = copy.deepcopy(filename)
-        if self.release.path in diff_filename:
-            diff_filename = diff_filename.replace(self.release.path, self.release.project_root)
+        if self.path in diff_filename:
+            diff_filename = diff_filename.replace(self.path, self.project_root)
         delta = self.file.diff_remote_to_local(diff_filename, tf.name)
         self.put(tf.name, filename, use_sudo=use_sudo)
         tf.close()

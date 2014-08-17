@@ -20,7 +20,7 @@ class File(Soppa):
         call = self.sudo if su else self.run
         call("cp {0} {1}".format(filepath, backup_file))
         call("cp {0} {1}".format(filepath, tmp_file))
-        call('chown {0} {1}'.format(self.parent.release.deploy_user, tmp_file))
+        call('chown {0} {1}'.format(self.parent.deploy_user, tmp_file))
 
         with tempfile.NamedTemporaryFile(delete=True) as f:
             a = self.get_file(tmp_file, f)

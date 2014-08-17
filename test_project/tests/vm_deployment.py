@@ -12,7 +12,7 @@ class BaseSuite(unittest.TestCase):
     pass
 
 class DjangoDeployTestCase(BaseSuite):
-    def test_mysql(self):
+    def xtest_mysql(self):
         state = dict(
             name='db',
             password=env.mysql_password,
@@ -32,17 +32,40 @@ class DjangoDeployTestCase(BaseSuite):
         r = Runner()
         r.setup(django(state))
 
-    def xtest_graphite(self):
-        state = dict(
+    def test_graphite(self):
+        # deployment configurations (override class defaults)
+        config = dict(
+            remote_user='root',
             release_deploy_user='root',
             release_project='graphite',
             release_host='graphite.dev',
         )
+        # roles settings: config, hosts
+        roles = dict(
+            webservers=dict(
+                config=dict(
+                    http_port=80,
+                    max_clients=200,
+                    remote_user='root',),
+                hosts=['web1','192.168.0.1']),
+            atlanta=dict(
+                hosts=['host1','host2']),
+        )
+        # host -specific settings
+        hosts = dict(
+            host1=dict(max_clients=199),
+        ))
+        # what to run in each host/role
+        recipe = [
+            dict(hosts='all', roles=['soppa.graphite']),
+            dict(hosts='mongo_servers', roles=['soppa.mongod']
+        ]
+        Runner(config, hosts, roles, recipe).run()
         r = Runner()
-        r.setup(graphite(state))
+        r.setup(graphite(config))
 
 class SingleTestCase(BaseSuite):
-    def test_grafana(self):
+    def xtest_grafana(self):
         state=dict(
             release_deploy_user='root',
             release_project='grafana',

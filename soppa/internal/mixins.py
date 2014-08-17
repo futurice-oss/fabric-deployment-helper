@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from functools import wraps
-import os, sys, re, inspect
+import os, sys, re, inspect, hashlib
 from soppa.internal.tools import import_string, Upload
 from soppa import *
 
@@ -41,7 +41,7 @@ class MetaClass(type):
 
 # get_methods(ApiMixin)
 API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get', 'local_put', 'local_sudo', 'mlcd', 'prefix', 'put', 'run', 'sudo', 'up']
-BASIC_NEEDS = ['need_db','need_web','need_release']
+BASIC_NEEDS = ['need_db','need_web']
 # need_ALIAS: allows generalizing, so changing need_web = 'soppa.apache', all configs still work.
 
 class ApiMixin(object):
@@ -131,6 +131,8 @@ class ApiMixin(object):
         """ Upload a template, with arguments relative to calling path """
         caller_path = here(instance=self)
         to = to or self.conf_dir
+        if not to:
+            raise Exception("Missing arguments")
         #TODO:inspecting frames and wrappers do not seem to play well together
         #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
         upload = Upload(frm, to, instance=self.parent, caller_path=caller_path)
@@ -138,12 +140,50 @@ class ApiMixin(object):
 
 class DeployMixin(ApiMixin):
     def setup_needs(self):
+        """ Ensures .setup() is only run once per-module """
         for instance in self.get_needs():
             key_name = '{0}.setup'.format(instance.get_name())
             if self.is_performed(key_name):
                 continue
             getattr(instance, 'setup')()
             self.set_performed(key_name)
+
+class ReleaseMixin(object):
+    needs = ['soppa.operating']
+    project = None
+    deploy_user = os.environ.get('USER', 'root')
+    deploy_group = 'www-data'
+    deploy_os = 'debian'
+    www_root = '/srv/www/'
+    basepath = '{www_root}{project}/'
+    project_root = '{basepath}www/'
+    time = time.strftime('%Y%m%d%H%M%S')
+    path = '{basepath}releases/{time}'
+    host = 'localhost'
+    packages_path = '{basepath}packages/'
+
+    def ownership(self, owner=None):
+        owner = owner or self.deploy_user
+        self.sudo('chown -fR {owner} {basepath}', owner=owner)
+
+    def dirs(self):
+        self.sudo('mkdir -p {www_root}dist/')
+        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
+        self.run('mkdir -p {path}')
+        if not self.exists(self.project_root):
+            with self.cd(self.basepath):
+                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
+
+    def symlink(self):
+        """ mv is atomic op on unix; allows seamless deploy """
+        with self.cd(self.basepath):
+            if self.operating.is_linux():
+                self.run('ln -s {path} www.new; mv -T www.new www')
+            else:
+                self.run('rm -f www && ln -sf {path} www')
+
+    def id(self, url):
+        return hashlib.md5(url).hexdigest()
 
 class InspectMixin(object):
 

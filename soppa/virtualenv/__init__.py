@@ -7,22 +7,22 @@ class Virtualenv(Soppa):
     """
     Setup for http://www.virtualenv.org/en/latest/
     """
-    path='{root.release.basepath}venv/'
-    is_active = True
+    virtualenv_path = '{root.basevirtualenv_path}venv/'
+    virtualenv_active = True
     needs=Soppa.needs+[
         'soppa.pip',
     ]
 
     def setup(self):
-        if self.root.release.project is None:
+        if self.root.project is None:
             print "No project configured, skipping virtualenv setup"
             return
         with settings(warn_only=True):
-            self.run('[ ! -d {path} ] && rm -rf {path} && '
+            self.run('[ ! -d {virtualenv_path} ] && rm -rf {virtualenv_path} && '
                  'virtualenv'
                  ' --extra-search-dir={pip.packages_to}'
-                 ' --prompt="({root.release.project})"'
-                 ' {path}')
+                 ' --prompt="({root.project})"'
+                 ' {virtualenv_path}')
 
     def packages_path(self):
         with self.activate():
@@ -32,10 +32,10 @@ class Virtualenv(Soppa):
 
     @contextmanager
     def activate(self):
-        if not self.root.release.project:
+        if not self.root.project:
             raise Exception('Project name not defined')
-        if self.is_active:
-            with self.prefix('source {path}bin/activate'):
+        if self.virtualenv_active:
+            with self.prefix('source {virtualenv_path}bin/activate'):
                 yield
         else:
             yield

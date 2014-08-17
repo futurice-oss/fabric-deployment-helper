@@ -6,15 +6,15 @@ from soppa import *
 from soppa.internal.fmt import fmtkeys, formatloc, escape_bad_matches
 from soppa.internal.tools import import_string
 from soppa.internal.logs import DeployLog
-from soppa.internal.mixins import ApiMixin, NeedMixin, InspectMixin, DeployMixin
+from soppa.internal.mixins import ApiMixin, NeedMixin, InspectMixin, DeployMixin, ReleaseMixin
 from soppa.internal.mixins import with_settings, settings#TODO: namespace under ApiMixin?
 from soppa.internal.manager import PackageManager
 
 dlog = DeployLog()
 
-class Soppa(DeployMixin, NeedMixin):
+class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
     reserved_keys = ['needs','reserved_keys','env']
-    needs = ['soppa.release']
+    needs = []
 
     def __init__(self, *args, **kwargs):
         super(Soppa, self).__init__(*args, **kwargs)
@@ -112,10 +112,12 @@ class Soppa(DeployMixin, NeedMixin):
 
     @property
     def parent(self):
+        """ When instance is part of needs[], return the parent. Default is self. """
         return self.parent_instance if hasattr(self, 'parent_instance') else self
 
     @property
     def root(self):
+        """ When instance is part of needs[], return the root. Default is self. """
         result = self
         while True:
             identifier = id(result)

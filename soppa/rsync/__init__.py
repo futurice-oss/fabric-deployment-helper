@@ -5,7 +5,7 @@ class Rsync(Soppa):
     deploy_group='www-data'
 
     def rsync_target(self):
-        fmt = self.fmt('{env.user}@{release.host}:')
+        fmt = self.fmt('{env.user}@{host}:')
         if self.env.use_ssh_config:#TODO:should never need to self.env
             fmt = self.fmt('{env.user}@{env.host_string}:')
         if self.env.local_deployment:

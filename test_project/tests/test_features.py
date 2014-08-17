@@ -100,10 +100,10 @@ class SoppaTest(BaseSuite):
     def test_scoped_env(self):
         p = pip()
         v = virtualenv()
-        v.is_active = True
-        self.assertEquals(p.fmt('{virtualenv.is_active}'), str(v.is_active))
-        self.assertTrue(p.virtualenv.is_active)
-        self.assertTrue(v.is_active)
+        v.virtualenv_active = True
+        self.assertEquals(p.fmt('{virtualenv.virtualenv_active}'), str(v.virtualenv_active))
+        self.assertTrue(p.virtualenv.virtualenv_active)
+        self.assertTrue(v.virtualenv_active)
         self.assertTrue(p.packages_to)
         self.assertTrue(p.packages_to)
         self.assertTrue(v.pip.packages_to)

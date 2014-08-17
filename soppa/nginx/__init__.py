@@ -1,17 +1,17 @@
 from soppa.contrib import *
 
 class Nginx(Soppa):
-    dir='/srv/nginx/'
-    user=None
-    group=None
-    restart_command='/etc/init.d/nginx restart'
-    start_command='/etc/init.d/nginx start'
+    nginx_dir='/srv/nginx/'
+    nginx_user=None
+    nginx_group=None
+    nginx_restart_command='/etc/init.d/nginx restart'
+    nginx_start_command='/etc/init.d/nginx start'
+    nginx_conf_dir = '{nginx_dir}conf/sites-enabled/'
     needs=[
         'soppa.file',
         'soppa.operating',
         'soppa.template',
     ]
-    conf_dir = '{dir}conf/sites-enabled/'
 
     def go(self):
         self.sudo('mkdir -p {nginx_conf_dir}')
@@ -40,9 +40,9 @@ class Nginx(Soppa):
     @with_settings(warn_only=True)
     def restart(self):
         if self.operating.is_linux():
-            result = self.sudo(self.restart_command, pty=False)
+            result = self.sudo(self.nginx_restart_command, pty=False)
             if result.failed:
-                result = self.sudo(self.start_command, pty=False)
+                result = self.sudo(self.nginx_start_command, pty=False)
         if self.operating.is_osx():
             cmd = 'launchctl unload /Library/LaunchDaemons/nginx.plist '
             result = self.sudo(cmd)

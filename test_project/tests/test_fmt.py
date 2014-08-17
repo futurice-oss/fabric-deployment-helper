@@ -13,7 +13,7 @@ class FormatTest(BaseSuite):
         m = modpack()
         self.assertEquals(m._expects({'foo': 1, 'bar': 2}, ['foo']), {'foo': 1})
         m.hello = 'hello'
-        self.assertEquals(fmtkeys('{hello} {release.path}'), ['hello','release.path'])
+        self.assertEquals(fmtkeys('{hello} {path}'), ['hello','path'])
         self.assertEquals(m.fmt('{hello} world'), 'hello world')
         self.assertEquals(m.fmt('hello world'), 'hello world')
         self.assertEquals(m.fmt('{hello} world', hello='bart'), 'bart world')
@@ -43,14 +43,15 @@ class FormatTest(BaseSuite):
 
     def test_resolution_order(self):
         m = modpack()
-        self.assertEquals(m.release.project, None)
-        self.assertEquals(m.modc.release.project, None)
+        self.assertEquals(m.project, None)
+        self.assertEquals(m.modc.project, None)
 
         m = modpack(dict(
-            release_project='foo',
-            modc_release_project='bar',
+            project='foo',
+            modc_project='bar',
             ))
-        self.assertEquals(m.release.project, 'foo')
-        self.assertEquals(m.modc.release.project, 'bar')
-        m.modc.release.project = 'omg'
-        self.assertEquals(m.modc.release.project, 'omg')
+        self.assertEquals(m.project, 'foo')
+        self.assertEquals(m.modc.project, 'bar')
+        self.assertEquals(m.modc.modc_project, 'bar')
+        m.modc.project = 'omg'
+        self.assertEquals(m.modc.project, 'omg')

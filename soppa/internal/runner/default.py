@@ -10,29 +10,36 @@ class Runner(DeployMixin, NeedMixin):
         super(Runner, self).__init__(*args, **kwargs)
         self.state = state
         self.module = None
+        self._roles = {}
+
+    def roles(self, role, tasks):
+        self._roles[role] = tasks
 
     def setup(self, module):
         self.module = module
         self.ask_sudo_password(capture=False)
 
+        # 0% gather needs of all installable modules
         needs = module.get_needs()
 
-        if self.module.release.project:
-            self.module.release.dirs()
-        self.module.release.ownership()
+        if self.module.project:
+            self.module.dirs()
+        self.module.ownership()
 
-        # configure
+        # configure everything
         self.configure(needs + [module])
 
-        # setup
+        # setup everything, except self
         for need in needs:
-            need.setup_needs()
+            need.setup_needs()#need.setup()
 
+        # setup self
         module.go()
 
         self.restart(needs)
 
     def configure(self, needs):
+        """ Prepare pre-requisitives a module has, before it can be setup """
         newProject = False
         if not os.path.exists(os.path.join(self.module.soppa.local_conf_path)):
             newProject = True

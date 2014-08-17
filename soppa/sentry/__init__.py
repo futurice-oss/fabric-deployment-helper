@@ -35,6 +35,6 @@ class Sentry(Soppa):
         if self.has_need('supervisor'):
             self.supervisor.up('sentry_supervisor.conf', '{supervisor_conf_dir}')
 
-        self.up('conf.py', '{release_path}')
+        self.up('conf.py', '{path}')
 
 sentry_task, sentry = register(Sentry)

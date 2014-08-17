@@ -18,7 +18,6 @@ class Django(Soppa):
         'soppa.operating',
         'soppa.apt',
     ]
-    requirements = 'requirements.txt'
     need_web = 'soppa.nginx'
     need_db = 'soppa.mysql'
     need_wsgi = 'soppa.uwsgi'
@@ -43,7 +42,7 @@ class Django(Soppa):
                 self.fmt('export DJANGO_SETTINGS_MODULE={dsm}', dsm=dsm))
 
     def check(self):
-        with self.virtualenv.activate(), self.cd(self.release_path):
+        with self.virtualenv.activate(), self.cd(self.path):
             result = self.sudo('env|grep DJANGO_SETTINGS_MODULE')
             assert self.fmt(self.settings) in result
 
@@ -52,16 +51,16 @@ class Django(Soppa):
         self.manage('syncdb --noinput')
 
     def prepare_assets(self):
-        with self.virtualenv.activate(), self.cd(self.release_path):
-            self.sudo('assetgen --profile prod assetgen.yaml --force && cp -r {release_path}static/* {basepath}static/')
+        with self.virtualenv.activate(), self.cd(self.path):
+            self.sudo('assetgen --profile prod assetgen.yaml --force && cp -r {path}static/* {basepath}static/')
         self.manage('collectstatic --noinput')
 
     def manage(self, args, standalone=False):
-        with self.virtualenv.activate(), self.cd(self.release_path):
+        with self.virtualenv.activate(), self.cd(self.path):
             return self.sudo('python manage.py {args}'.format(args=args))
 
     def admin(self, args, standalone=False):
-        with self.virtualenv.activate(), self.cd(self.release_path):
+        with self.virtualenv.activate(), self.cd(self.path):
             return self.run('django-admin.py {args}'.format(args=args))
 
     def database_env(self, django_settings=None):
