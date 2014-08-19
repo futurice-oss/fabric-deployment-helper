@@ -23,7 +23,7 @@ class FormatTest(BaseSuite):
         m.iamjohn = 'John'
         m.iamjoe = '{iamjohn}'
         m.iamnotmary = '{iamjoe}'
-        self.assertEqual(m.iamnotmary, 'John')
+        self.assertEqual(m.iamnotmary, '{iamjoe}')
         self.assertEqual(m.fmt('{iamnotmary}'), 'John')
         self.assertEqual(m.fmt('{imaginarystringhere}'), '')
 
@@ -35,22 +35,29 @@ class FormatTest(BaseSuite):
         self.assertNotEquals(m.modc.soreal, m.soreal)
         self.assertNotEquals(m.modc_soreal, m.soreal)
 
+        # modc inherits values from modpack into its own namespace
+        # modpack.modc_mangle => (modc) self.mangle
         self.assertEquals(m.modc_mangle, m.modc.modc_left)
         self.assertEquals(m.modc.mangle, m.modc.modc_left)
         self.assertEquals(m.modc.mangle_self, m.modc.modc_left)
-        self.assertEquals(m.modc.__dict__['mangle'], '{modc_left}')
-        self.assertEquals(m.modc.__dict__['mangle_self'], '{modc_left}')
+        self.assertEquals(m.modc.__dict__['mangle'], m.modc.modc_left)
+        self.assertEquals(m.modc.__dict__['mangle_self'], m.modc.modc_left)
+
+        self.assertEquals(m.modc.voodoo(), False)
+
+        self.assertEquals(m.project, 'modpack')
 
     def test_resolution_order(self):
         m = modpack()
-        self.assertEquals(m.project, None)
-        self.assertEquals(m.modc.project, None)
+        self.assertEquals(m.project, m.get_name())
+        self.assertEquals(m.modc.project, m.modc.get_name())
 
         m = modpack(dict(
             project='foo',
             modc_project='bar',
             ))
         self.assertEquals(m.project, 'foo')
+        self.assertEquals(m.fmt('{project}'), 'foo')
         self.assertEquals(m.modc.project, 'bar')
         self.assertEquals(m.modc.modc_project, 'bar')
         m.modc.project = 'omg'

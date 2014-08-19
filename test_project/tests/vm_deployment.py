@@ -34,11 +34,12 @@ class DjangoDeployTestCase(BaseSuite):
 
     def test_graphite(self):
         # deployment configurations (override class defaults)
+        # Release is ReleaseMixin, part of Soppa now
         config = dict(
             remote_user='root',
-            release_deploy_user='root',
-            release_project='graphite',
-            release_host='graphite.dev',
+            deploy_user='root',
+            project='graphite',
+            host='graphite.dev',
         )
         # roles settings: config, hosts
         roles = dict(
@@ -47,22 +48,19 @@ class DjangoDeployTestCase(BaseSuite):
                     http_port=80,
                     max_clients=200,
                     remote_user='root',),
-                hosts=['web1','192.168.0.1']),
-            atlanta=dict(
-                hosts=['host1','host2']),
+                hosts=['vm',]),
+            dbservers=dict(
+                hosts='vm'),
         )
         # host -specific settings
         hosts = dict(
             host1=dict(max_clients=199),
-        ))
+        )
         # what to run in each host/role
         recipe = [
-            dict(hosts='all', roles=['soppa.graphite']),
-            dict(hosts='mongo_servers', roles=['soppa.mongod']
-        ]
+            dict(roles='*', modules=['soppa.graphite']),
+            dict(roles='webservers', modules=['soppa.nginx']),]
         Runner(config, hosts, roles, recipe).run()
-        r = Runner()
-        r.setup(graphite(config))
 
 class SingleTestCase(BaseSuite):
     def xtest_grafana(self):

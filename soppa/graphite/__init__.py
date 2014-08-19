@@ -5,12 +5,13 @@ class Graphite(Soppa):
     Graphite by default installs to /opt/graphite/
     Carbon configuration from: https://github.com/graphite-project/carbon/tree/master/conf
     """
-    path='/opt/graphite/'
-    pathweb='{path}webapp/graphite/'
-    host='localhost'
-    carbon_path='{path}'
+    project = 'graphite'
+    path = '/opt/graphite/'
+    pathweb = '{path}webapp/graphite/'
+    host = 'localhost'
+    carbon_path = '{path}'
     need_web = 'soppa.nginx'
-    needs=Soppa.needs+[
+    needs = Soppa.needs+[
         'soppa.template',
         'soppa.nodejs',
         'soppa.statsd',
@@ -24,7 +25,7 @@ class Graphite(Soppa):
         'soppa.remote',
     ]
 
-    def go(self):
+    def setup(self):
         self.sudo('mkdir -p {path}')
         self.sudo('chown -R {deploy_user} {path}')
 
@@ -36,9 +37,9 @@ class Graphite(Soppa):
         self.up('local_settings.py', '{pathweb}')
         self.sudo('chown {deploy_user} {pathweb}local_settings.py')
 
-        self.supervisor.up('graphite_supervisor.conf', '{supervisor.conf_dir}')
+        self.supervisor.up('graphite_supervisor.conf', '{supervisor_conf_dir}')
         if self.has_need('nginx'):
-            self.web.up('graphite_nginx.conf', '{web.conf_dir}')
+            self.web.up('graphite_nginx.conf', '{nginx_conf_dir}')
 
         with self.virtualenv.activate(), self.cd('{pathweb}'):
             self.sudo('python manage.py syncdb --noinput')

@@ -2,7 +2,7 @@
 import os, sys, time, copy, inspect, logging
 from pprint import pprint as pp
 
-from fabric.api import env, task
+from fabric.api import env, task, execute
 from soppa.internal.tools import here, ObjectDict
 
 # FABRIC

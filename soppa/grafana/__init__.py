@@ -13,7 +13,7 @@ class Grafana(Soppa):
     web_host = 'grafana.dev'
     project = 'grafana'
 
-    def go(self):
+    def setup(self):
         # self.package.get_file(url, dest)
         # - normal file download, ensures dest= exists
         # self.package.get_file(url, dest)
@@ -23,7 +23,8 @@ class Grafana(Soppa):
         self.ownership()
         self.symlink()
 
-        self.web.up('grafana_nginx.conf', '{web.conf_dir}')
+        if self.has_need('nginx'):
+            self.web.up('grafana_nginx.conf', '{nginx_conf_dir}')
         self.up('config.js', '{project_root}')
 
 grafana_task, grafana = register(Grafana)

@@ -41,7 +41,7 @@ class MetaClass(type):
 
 # get_methods(ApiMixin)
 API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get', 'local_put', 'local_sudo', 'mlcd', 'prefix', 'put', 'run', 'sudo', 'up']
-BASIC_NEEDS = ['need_db','need_web']
+BASIC_NEEDS = ['need_db','need_web','need_vcs',]
 # need_ALIAS: allows generalizing, so changing need_web = 'soppa.apache', all configs still work.
 
 class ApiMixin(object):
@@ -130,7 +130,6 @@ class ApiMixin(object):
     def up(self, frm, to=None, ctx={}):
         """ Upload a template, with arguments relative to calling path """
         caller_path = here(instance=self)
-        to = to or self.conf_dir
         if not to:
             raise Exception("Missing arguments")
         #TODO:inspecting frames and wrappers do not seem to play well together
@@ -150,10 +149,10 @@ class DeployMixin(ApiMixin):
 
 class ReleaseMixin(object):
     needs = ['soppa.operating']
-    project = None
     deploy_user = os.environ.get('USER', 'root')
     deploy_group = 'www-data'
     deploy_os = 'debian'
+    project = None
     www_root = '/srv/www/'
     basepath = '{www_root}{project}/'
     project_root = '{basepath}www/'
@@ -223,6 +222,10 @@ class InspectMixin(object):
 
 class NeedMixin(InspectMixin):
     needs = []
+    need_web = ''
+    need_db = ''
+    need_vcs = ''
+
     def __init__(self, *args, **kwargs):
         self._CACHE = {}
         self.args = args
@@ -234,12 +237,12 @@ class NeedMixin(InspectMixin):
         for k in self.needs:
             rs.add(k)
         for bneed in BASIC_NEEDS:
-            if self.__dict__.get(bneed, None): # recursion: __geattr__ -> has_need -> get_needs
+            if self.__dict__.get(bneed, None): # recursion: __getattr__ -> has_need -> get_needs
                 value = self.__dict__[bneed]
                 if isinstance(value, basestring):
                     rs.add(value)
-                elif isinstance(value, dict):
-                    print "TODO:::",'need',value
+                else:
+                    raise Exception("Unkown format")
         rs = list(rs)
         if as_str:
             return rs

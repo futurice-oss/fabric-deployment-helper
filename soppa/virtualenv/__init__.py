@@ -7,7 +7,7 @@ class Virtualenv(Soppa):
     """
     Setup for http://www.virtualenv.org/en/latest/
     """
-    virtualenv_path = '{root.basevirtualenv_path}venv/'
+    virtualenv_path = '{root.basepath}venv/'
     virtualenv_active = True
     needs=Soppa.needs+[
         'soppa.pip',

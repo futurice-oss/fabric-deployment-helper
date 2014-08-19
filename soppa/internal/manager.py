@@ -20,7 +20,8 @@ class PackageManager(object):
         return self._CACHE[key]
             
     def get_packages(self):
-        """ Flatten packages into a single source of truth, ensuring needs do not override existing project dependencies """
+        """ Flatten packages into a single source of truth, ensuring needs do not override existing project dependencies.
+        """
         rs = {k:{'meta':[], 'package':[]} for k in self.unique_handlers()}
         def handler_group(handler):
             for uh in self.unique_handlers():

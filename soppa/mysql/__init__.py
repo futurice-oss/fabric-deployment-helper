@@ -1,9 +1,9 @@
 from soppa.contrib import *
 
 class Mysql(Soppa):
-    name='{project}'
-    user='root'
-    password=''
+    user = 'root'
+    name = ''
+    password = ''
     needs = Soppa.needs+['soppa.pip','soppa.apt']
 
     def setup(self):
@@ -17,7 +17,7 @@ class Mysql(Soppa):
                 self.create_database()
 
     def create_database(self):
-        if not self.password or not self.user:
+        if not all([self.password, self.user, self.name]):
             raise Exception('Provide DATABASES settings')
         c = []
         c.append("create database if not exists {name}")

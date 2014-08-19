@@ -21,7 +21,7 @@ class Uwsgi(Soppa):
     project = 'uwsgi'
     conf_dir = '{root.basepath}config/'
 
-    def go(self):
+    def setup(self):
         self.sudo('mkdir -p {conf_dir}')
         self.up('uwsgi.ini', '{conf_dir}vassals/')# should ensure dir exists before uploading?
         self.sudo('chown -fR {root.deploy_user} {root.basepath}config/')

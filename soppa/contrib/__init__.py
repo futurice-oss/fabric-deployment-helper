@@ -1,4 +1,4 @@
-import os, sys, copy, re, datetime, getpass, zlib
+import os, sys, copy, re, datetime, getpass, zlib, inspect
 from optparse import OptionParser
 from subprocess import call
 
@@ -12,25 +12,34 @@ from soppa.internal.manager import PackageManager
 
 dlog = DeployLog()
 
+def get_full_dict(obj):
+    return dict(sum([cls.__dict__.items() for cls in obj.__class__.__mro__ if cls.__name__ != "object"], obj.__dict__.items()))
+
 class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
     reserved_keys = ['needs','reserved_keys','env']
+    autoformat = True
     needs = []
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ctx={}, *args, **kwargs):
         super(Soppa, self).__init__(*args, **kwargs)
-        # class(dict()) == class(ctx=dict())
         self.args = args
         self.kwargs = kwargs
-        if self.args\
-                and isinstance(self.args[0], dict)\
-                and len(self.args)==1\
-                and not self.kwargs.get('ctx'):
-            self.kwargs['ctx'] = self.args[0]
+        self.kwargs['ctx'] = ctx
 
-        # apply class vars as instance vars for easy __dict__
-        for k,v in self.__class__.__dict__.items():
-            if not k.startswith('__') and not callable(v) and not isinstance(v, property):
-                setattr(self, k, v)
+        # Apply all inherited variables to have them in __dict__ scope
+        # - allows to .fmt() instance variables within __init__
+        def apply_vars(values):
+            cur_values = self.__dict__
+            for k,v in values.iteritems():
+                if not k.startswith('__') \
+                        and not callable(v) \
+                        and not isinstance(v, property):
+                    cur_dict_value = cur_values.get(k, None)
+                    cur_instance_value = getattr(self, k)
+                    if not cur_dict_value and not callable(cur_instance_value):
+                        setattr(self, k, v)
+        apply_vars(self.__class__.__dict__)
+        apply_vars(get_full_dict(self))
 
         self.env = env # fabric
         self.soppa = SOPPA_DEFAULTS
@@ -42,33 +51,37 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
         context.update(**kwargs.get('ctx', {}))
         if any([key in self.reserved_keys for key in context.keys()]):
             raise Exception("Reserved keys used")
+
         # set initial state based on context, ensuring not overriding needs[]
         for k,v in context.iteritems():
             if not self.has_need(k) and k not in [self.get_name()]:
                 setattr(self, k, v)
 
-    def __getattribute__(self, key):
-        """ Magic: To be able to to support 'self.foo' -- for existing variables especially -- and,
-        have the returned string be formatted, this method intercepts all attribute access """
+        if self.project is None: # default project name for project-naming convention used by ReleaseMixin
+            self.project = self.get_name()
+        
+        # pre-format all strings
+        for key in self.__dict__.keys():
+            value = getattr(self, key)
+            if isinstance(value, basestring):
+                setattr(self, key, self.fmt(value))
+
+    def __getattr__(self, key):
         try:
-            result = object.__getattribute__(self, key)
-        except Exception, e:
+            result = self.__dict__[key]
+        except KeyError, e:
             # lazy-load dependencies defined in needs=[]
             if not key.startswith('__') and self.has_need(key):
                 instance = self._load_need(key, alias=None, ctx={'args':self.args, 'kwargs': self.kwargs})
                 name = key.split('.')[-1]
                 setattr(self, name, instance)
                 return instance
-            raise
-        if not key.startswith('_') and isinstance(result, basestring):
-            result = self.fmt(result)
+            raise AttributeError(e)
         return result
 
     def _load_need(self, key, alias=None, ctx={}):
         return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)
 
-    # Properties for common needs; configured via need_X=''
-    # TODO: check for in __getattribute__?
     @property
     def vcs(self):
         if not hasattr(self, '_vcs_proxy'):
@@ -79,7 +92,6 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
     def web(self):
         if not hasattr(self, '_web_proxy'):
             self._web_proxy = self._load_need(self.need_web, alias='web', ctx={'args':self.args,'kwargs':self.kwargs})
-
         return self._web_proxy
 
     def isDirty(self):
@@ -153,6 +165,8 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
                     if not key.startswith('self.'):
                         realkey = key.split('.')[0]
                         if hasattr(self, realkey):
+                            #if getattr(self, realkey) is None:
+                            #    raise Exception("Undefined key: {}".format(realkey))
                             string = string.replace('{'+key+'}', '{self.'+key+'}')
                         else:
                             kwargs.setdefault(key, '')

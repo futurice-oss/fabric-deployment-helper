@@ -13,7 +13,7 @@ class Nginx(Soppa):
         'soppa.template',
     ]
 
-    def go(self):
+    def setup(self):
         self.sudo('mkdir -p {nginx_conf_dir}')
         
         if self.operating.is_linux():

@@ -7,9 +7,9 @@ class Supervisor(Soppa):
     """
     Supervisor: http://supervisord.org/
     """
-    conf_dir='/etc/supervisor/conf.d/'
-    opt='-c "/etc/supervisord.conf"'
-    user='{root.deploy_user}'
+    supervisor_conf_dir = '/etc/supervisor/conf.d/'
+    supervisor_opt = '-c "/etc/supervisord.conf"'
+    supervisor_user = '{root.deploy_user}'
 
     needs=[
         'soppa.file',
@@ -19,7 +19,7 @@ class Supervisor(Soppa):
         'soppa.virtualenv',
     ]
 
-    def go(self):
+    def setup(self):
         self.sudo('mkdir -p {supervisor_conf_dir}')
         self.sudo('mkdir -p /var/log/supervisor/')
 
@@ -32,18 +32,18 @@ class Supervisor(Soppa):
         
     @with_settings(warn_only=True)
     def startcmd(self):
-        res = self.sudo("supervisorctl {opt} start all")
+        res = self.sudo("supervisorctl {supervisor_opt} start all")
         if not res.succeeded or any(k in res for k in ['no such file', 'refused connection', 'SHUTDOWN_STATE']):
             if 'SHUTDOWN_STATE' in res:
                 time.sleep(3)
-            self.sudo("supervisord {opt}")
+            self.sudo("supervisord {supervisor_opt}")
 
     @with_settings(warn_only=True)
     def stop(self):
-        res = self.sudo("supervisorctl {opt} stop all")
+        res = self.sudo("supervisorctl {supervisor_opt} stop all")
         if not res.succeeded or any(k in res for k in ['SHUTDOWN_STATE']):
             time.sleep(3)
-        self.sudo("supervisorctl {opt} shutdown")
+        self.sudo("supervisorctl {supervisor_opt} shutdown")
 
     @with_settings(warn_only=True)
     def restart(self):
@@ -53,10 +53,10 @@ class Supervisor(Soppa):
     @with_settings(warn_only=True)
     def soft_restart(self):
         # NOTE: supervisorctl restart does not reload configuration
-        self.sudo("supervisorctl {opt} restart all")
+        self.sudo("supervisorctl {supervisor_opt} restart all")
 
     def check(self):
-        result = self.sudo("supervisorctl {opt} status")
+        result = self.sudo("supervisorctl {supervisor_opt} status")
 
 
 supervisor_task, supervisor = register(Supervisor)

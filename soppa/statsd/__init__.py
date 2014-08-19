@@ -9,7 +9,7 @@ class StatsD(Soppa):
         'soppa.nodejs',
     ]
 
-    def go(self):
+    def setup(self):
         if not self.exists('{basepath}statsd'):
             with self.cd('{basepath}'):
                 self.sudo('git clone https://github.com/etsy/statsd.git')
