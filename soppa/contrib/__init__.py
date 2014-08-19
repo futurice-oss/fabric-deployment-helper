@@ -27,7 +27,7 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
         self.kwargs['ctx'] = ctx
 
         # Apply all inherited variables to have them in __dict__ scope
-        # - allows to .fmt() instance variables within __init__
+        # - allows to format dynamic variables -- fmt() -- instance variables in __init__
         def apply_vars(values):
             cur_values = self.__dict__
             for k,v in values.iteritems():
@@ -165,8 +165,8 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
                     if not key.startswith('self.'):
                         realkey = key.split('.')[0]
                         if hasattr(self, realkey):
-                            #if getattr(self, realkey) is None:
-                            #    raise Exception("Undefined key: {}".format(realkey))
+                            if getattr(self, realkey) is None:
+                                raise Exception("Undefined key: {}".format(realkey))
                             string = string.replace('{'+key+'}', '{self.'+key+'}')
                         else:
                             kwargs.setdefault(key, '')
