@@ -11,18 +11,19 @@ QUICK START
 Either install as package, or `pip install -r requirements.txt` and done.
 Run tests with `python setup.py test`.
 
-Create tasks into a fabfile.py, eg (`fab -H target graphite_deploy`; by default ~/.ssh/config in use):
+Create tasks into a fabfile.py, eg (`fab graphite_deploy`; by default ~/.ssh/config in use):
 
 Example: Install Graphite as defined in soppa.graphite:
 ```python
 from soppa.ingredients import *
 @task
 def graphite_deploy():
-    ctx = dict(
-        release=dict(project='graphite'),
-        nginx=dict(host='graphite.dev'),
-        graphite=dict(need_web='soppa.nginx'),
+    config = dict(
+        project='graphite',
+        deploy_user='root',
+        host='graphite.dev',
     )
-    r = Runner(ctx)
-    r.setup(graphite())
+    roles = dict(all=dict(hosts=['vm']))
+    recipe = [dict(roles='all', modules=['soppa.graphite'])]
+    Runner(config,{},roles,recipe).run()
 ```
