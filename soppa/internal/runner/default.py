@@ -55,26 +55,22 @@ class Runner(DeployMixin, NeedMixin):
                 data = [data]
             return list(data)
         all_hosts = list(set(itertools.chain.from_iterable([as_list(v['hosts']) for k,v in self.roles.iteritems()])))
-        print self.roles
-        print "all hosts"
-        pp(all_hosts)
         if name in ['*', 'all']:
             return list(all_hosts)
-
         if self.roles.get(name):
-            hosts = list()
-            for role in self.roles[name].get('hosts', []):
-                hosts += [as_list(v['hosts']) for k,v in self.roles.iteritems() if k==role]
-            return list(set(itertools.chain.from_iterable(hosts)))
-
+            return as_list(self.roles[name].get('hosts', []))
         return name
 
     def run(self):
         """ A run lives in a Fabric execution (env.host_string) context """
         print "RUN",self
+        if not all([self.get_hosts_for(ingredient['roles']) for ingredient in self.recipe]):
+            raise Exception("No hosts configured for {}".format(ingredient))
+
         for ingredient in self.recipe:
             pp(ingredient)
             hosts = self.get_hosts_for(ingredient['roles'])
+            print "=hosts",hosts
             modules = ingredient['modules']
             # create a new standalone instance for execution
             runner = Runner(
@@ -96,9 +92,6 @@ class Runner(DeployMixin, NeedMixin):
         config = copy.deepcopy(self.config)
         # Configuration: hosts > roles > config > classes
         role_config = {}
-        if not env.host_string:
-            raise Exception("BUG: NO HOST: {} {}".format(ingredient, self.recipe))
-
         for role in self.get_roles_for_host(env.host_string):
             role_config.update(self.roles[role].get('config', {}))
         config.update(role_config)
