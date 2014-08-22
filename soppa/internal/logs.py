@@ -11,11 +11,12 @@ class DeployLog(object):
         self.data['meta'] = meta
         self.data['hosts'] = {}
 
-    def add(self, bucket, need, data):
+    def add(self, bucket, name, data):
         host = env.host_string
-        need_name = need.get_name()
         hosts = self.data['hosts']
         hosts.setdefault(host, {})
-        hosts[host].setdefault(need_name, {})
-        hosts[host][need_name].setdefault(bucket, [])
-        hosts[host][need_name][bucket].append(data)
+        hosts[host].setdefault(name, {})
+        hosts[host][name].setdefault(bucket, [])
+        hosts[host][name][bucket].append(data)
+
+dlog = DeployLog()

@@ -22,9 +22,9 @@ class Uwsgi(Soppa):
     conf_dir = '{root.basepath}config/'
 
     def setup(self):
-        self.sudo('mkdir -p {conf_dir}')
-        self.up('uwsgi.ini', '{conf_dir}vassals/')# should ensure dir exists before uploading?
+        self.sudo('mkdir -p {conf_dir}vassals/')
         self.sudo('chown -fR {root.deploy_user} {root.basepath}config/')
+        self.action('up', 'uwsgi.ini', '{conf_dir}vassals/', handler=['uwsgi.restart'])
 
     def restart(self):
         if self.linux.running(r"ps auxww|grep uwsgi|grep [e]mperor"):

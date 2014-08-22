@@ -4,21 +4,25 @@ from subprocess import call
 
 from soppa import *
 from soppa.internal.fmt import fmtkeys, formatloc, escape_bad_matches
-from soppa.internal.tools import import_string
-from soppa.internal.logs import DeployLog
+from soppa.internal.tools import import_string, get_full_dict, get_namespaced_class_values, fmt_namespaced_values
+from soppa.internal.logs import DeployLog, dlog
 from soppa.internal.mixins import ApiMixin, NeedMixin, InspectMixin, DeployMixin, ReleaseMixin
 from soppa.internal.mixins import with_settings, settings#TODO: namespace under ApiMixin?
 from soppa.internal.manager import PackageManager
 
-dlog = DeployLog()
-
-def get_full_dict(obj):
-    return dict(sum([cls.__dict__.items() for cls in obj.__class__.__mro__ if cls.__name__ != "object"], obj.__dict__.items()))
+# TODO: taken from Fabric... but str assignment on passing var is nasty, convert to being a dict internally
+# python-invoke will have a proper Result object, future-proof
+class AttributeString(str):
+    @property
+    def stdout(self):
+        return str(self)
 
 class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
     reserved_keys = ['needs','reserved_keys','env']
     autoformat = True
     needs = []
+    strict_fmt = True
+    defer_handlers = []
 
     def __init__(self, ctx={}, *args, **kwargs):
         super(Soppa, self).__init__(*args, **kwargs)
@@ -33,7 +37,8 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
             for k,v in values.iteritems():
                 if not k.startswith('__') \
                         and not callable(v) \
-                        and not isinstance(v, property):
+                        and not isinstance(v, property) \
+                        and not isinstance(v, staticmethod):
                     cur_dict_value = cur_values.get(k, None)
                     cur_instance_value = getattr(self, k)
                     if not cur_dict_value and not callable(cur_instance_value):
@@ -57,14 +62,27 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
             if not self.has_need(k) and k not in [self.get_name()]:
                 setattr(self, k, v)
 
+        namespaced_values = get_namespaced_class_values(self)
+
         if self.project is None: # default project name for project-naming convention used by ReleaseMixin
             self.project = self.get_name()
+
+        # rescope configuration
+        new_data = self.rescope_namespaced_variables(self.__dict__)
+        for k,v in new_data.iteritems():
+            setattr(self, k, v)
         
         # pre-format all strings
         for key in self.__dict__.keys():
             value = getattr(self, key)
             if isinstance(value, basestring):
                 setattr(self, key, self.fmt(value))
+
+        # namespace class attributes
+        keys = self.__dict__.keys()
+        for k,v in fmt_namespaced_values(self, namespaced_values).iteritems():
+            if k not in keys:
+                setattr(self, k, v)
 
     def __getattr__(self, key):
         try:
@@ -81,6 +99,54 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
 
     def _load_need(self, key, alias=None, ctx={}):
         return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)
+
+    def action(self, name, *args, **kwargs):
+        """
+        Action allows wrapping commands into a context that oversees the method flow
+        - given=[]; only execute, if True
+        - handlers=[] -- ['apache.restart']; run handlers on commands
+        """
+        method = getattr(self, name)
+        given = kwargs.pop('given', None)
+        if given and not given(self):
+            # TODO: log.debug()
+            dlog.add('skipped', 'given', [name, args, kwargs])
+            return
+        handlers = kwargs.pop('handler', [])
+        for handler in handlers:
+            if isinstance(handler, list):
+                print "HANDLE-pre",handler
+        result = method(*args, **kwargs)
+        def is_deferred(instance, handler):
+            for rule in instance.defer_handlers:
+                if handler.endswith(rule) or rule=='*':
+                    return True
+            return False
+
+        def is_dirty(result):
+            return result.modified
+
+        for handler in handlers:
+            handler_instance = self.get_handler(handler)
+            if is_deferred(self, handler):
+                dlog.add('defer', 'all', [handler, handler_instance, result.__dict__])
+                continue
+            # TODO: might always want restart, even if not modified?
+            if is_dirty(result):
+                handler_instance()
+        return result
+
+    def get_handler(self, name):
+        """
+        Handler: module.method
+        NOTE: needs=[] provide resolution for names
+        """
+        module, method = name.split('.')
+        if module == self.get_name():
+            instance = self
+        else:
+            instance = getattr(self, module)
+        return getattr(instance, method)
 
     @property
     def vcs(self):
@@ -143,14 +209,10 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
         self.fmt(string) vs string.format(self=self)
         self.fmt(string, foo=2) vs string.format(foo=2, self=self)
 
-        Add self as formatting argument, and prefix keys with self., if key not in arguments.
+        Adds self as formatting argument, and prefix keys with self., if key not in arguments.
         {foo} => {self.foo}.format(self=self)
         {foo} kwargs(foo=2) => {foo}.format(foo=foo)
         {foo.bar} kwargs(foo=2) => {foo}.format(self=self)
-
-        For self.foo to equal {foo}: __getattribute__ using fmt() means can not access variables, that
-        require formatting and are missing those values from the called instance.
-        Defaulting to empty strings, instead of exceptions because of that.
         """
         for times in range(6):
             keys = []
@@ -159,17 +221,20 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
                 if '{' not in string:
                     break
                 keys = fmtkeys(string)
+            else:
+                return string
             kwargs_keys = kwargs.keys()
             for key in keys:
                 if key not in kwargs_keys:
                     if not key.startswith('self.'):
                         realkey = key.split('.')[0]
                         if hasattr(self, realkey):
-                            if getattr(self, realkey) is None:
+                            if self.strict_fmt and getattr(self, realkey) is None:
                                 raise Exception("Undefined key: {}".format(realkey))
                             string = string.replace('{'+key+'}', '{self.'+key+'}')
                         else:
-                            kwargs.setdefault(key, '')
+                            if not self.strict_fmt:
+                                kwargs.setdefault(key, '')
             if '{self.' in string:
                 kwargs['self'] = self
             string = string.format(**kwargs)
@@ -211,6 +276,9 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
         return self.__class__.__name__.lower()
 
     def settings(self):
+        return {}
+
+    def restart(self):
         return {}
 
     def cli_interface(self, action=None, *args, **kwargs):

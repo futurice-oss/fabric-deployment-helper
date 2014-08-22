@@ -24,7 +24,7 @@ class Grafana(Soppa):
         self.symlink()
 
         if self.has_need('nginx'):
-            self.web.up('grafana_nginx.conf', '{nginx_conf_dir}')
+            self.action('up', 'grafana_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
         self.up('config.js', '{project_root}')
 
 grafana_task, grafana = register(Grafana)

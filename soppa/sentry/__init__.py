@@ -17,22 +17,24 @@ class Sentry(Soppa):
     needs = ['soppa.virtualenv',
         'soppa.supervisor',
         'soppa.redis',
-        'soppa.pip',
         'soppa.remote',
+
         'soppa.template',
+        'soppa.pip',
+        'soppa.apt',
     ]
 
     def setup(self):
         self.sudo('mkdir -p {www_root}htdocs')
 
         if self.has_need('nginx'):
-            self.nginx.up('sentry_nginx.conf', '{nginx_conf_dir}')
+            self.action('up', 'sentry_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
 
         if self.has_need('apache'):
-            self.apache.up('sentry_apache.conf', '{apache_dir}sites-enabled/')
+            self.action('up', 'sentry_apache.conf', '{apache_dir}sites-enabled/', handler=['apache.restart'])
 
         if self.has_need('supervisor'):
-            self.supervisor.up('sentry_supervisor.conf', '{supervisor_conf_dir}')
+            self.action('up', 'sentry_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
 
         self.up('conf.py', '{path}')
 

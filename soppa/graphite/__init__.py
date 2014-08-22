@@ -10,7 +10,7 @@ class Graphite(Soppa):
     pathweb = '{path}webapp/graphite/'
     host = 'localhost'
     carbon_path = '{path}'
-    need_web = 'soppa.nginx'
+
     needs = Soppa.needs+[
         'soppa.template',
         'soppa.nodejs',
@@ -24,8 +24,11 @@ class Graphite(Soppa):
         'soppa.redis',
         'soppa.remote',
     ]
+    need_web = 'soppa.nginx'
 
     def setup(self):
+        print "setup"
+        return
         self.sudo('mkdir -p {path}')
         self.sudo('chown -R {deploy_user} {path}')
 
@@ -37,9 +40,9 @@ class Graphite(Soppa):
         self.up('local_settings.py', '{pathweb}')
         self.sudo('chown {deploy_user} {pathweb}local_settings.py')
 
-        self.supervisor.up('graphite_supervisor.conf', '{supervisor_conf_dir}')
+        self.action('up', 'graphite_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
         if self.has_need('nginx'):
-            self.web.up('graphite_nginx.conf', '{nginx_conf_dir}')
+            self.action('up', 'graphite_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
 
         with self.virtualenv.activate(), self.cd('{pathweb}'):
             self.sudo('python manage.py syncdb --noinput')

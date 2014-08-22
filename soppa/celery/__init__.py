@@ -7,7 +7,8 @@ class Celery(Soppa):
     ]
 
     def setup(self):
-        self.up('celery_supervisor.conf',
-                '{supervisor.conf_dir}celery_supervisor_{project}.conf')
+        self.action('up', 'celery_supervisor.conf',
+                '{supervisor.conf_dir}celery_supervisor_{project}.conf',
+                handler=['supervisor.restart'])
 
 celery_task, celery = register(Celery)

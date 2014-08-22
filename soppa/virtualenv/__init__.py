@@ -9,7 +9,7 @@ class Virtualenv(Soppa):
     """
     virtualenv_path = '{root.basepath}venv/'
     virtualenv_active = True
-    needs=Soppa.needs+[
+    needs = Soppa.needs+[
         'soppa.pip',
     ]
 

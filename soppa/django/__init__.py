@@ -3,20 +3,16 @@ from soppa.contrib import *
 class Django(Soppa):
     settings='{project}.settings.prod'
     needs=['soppa.file',
-        'soppa.uwsgi',
-        'soppa.nginx',
-        'soppa.mysql',
-        'soppa.nodejs',
         'soppa.template',
+        'soppa.remote',
+        'soppa.operating',
+        'soppa.apt',
 
+        'soppa.nodejs',
         'soppa.virtualenv',
         'soppa.supervisor',
         'soppa.redis',
         'soppa.pip',
-        'soppa.remote',
-
-        'soppa.operating',
-        'soppa.apt',
     ]
     need_web = 'soppa.nginx'
     need_db = 'soppa.mysql'

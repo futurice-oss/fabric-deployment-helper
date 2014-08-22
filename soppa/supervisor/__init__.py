@@ -11,12 +11,14 @@ class Supervisor(Soppa):
     supervisor_opt = '-c "/etc/supervisord.conf"'
     supervisor_user = '{root.deploy_user}'
 
-    needs=[
+    needs = [
         'soppa.file',
         'soppa.operating',
-        'soppa.pip',
-        'soppa.template',
         'soppa.virtualenv',
+
+        'soppa.template',
+        'soppa.pip',
+        'soppa.apt',
     ]
 
     def setup(self):
@@ -28,7 +30,7 @@ class Supervisor(Soppa):
             self.sudo('chmod +x /etc/init.d/supervisor')
             self.sudo('update-rc.d supervisor defaults')
 
-        self.up('supervisord.conf', '/etc/')
+        self.action('up', 'supervisord.conf', '/etc/', handler=['supervisor.restart'])
         
     @with_settings(warn_only=True)
     def startcmd(self):

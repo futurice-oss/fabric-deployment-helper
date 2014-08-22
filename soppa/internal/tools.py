@@ -101,3 +101,30 @@ class ObjectDict(dict):
 
     def __setattr__(self, key, value):
         self[key] = value
+
+def get_full_dict(obj):
+    return dict(sum([cls.__dict__.items() for cls in obj.__class__.__mro__ if cls.__name__ != "object"], obj.__dict__.items()))
+
+def get_namespaced_class_values(obj):
+    values = get_full_dict(obj.__class__)
+    vals = {}
+    for k,v in values.iteritems():
+        if k.startswith('__') \
+                or callable(v) \
+                or isinstance(v, property) \
+                or isinstance(v, staticmethod):
+            continue
+        if k in obj.reserved_keys:
+            continue
+        vals[k] = v
+    return vals
+
+def fmt_namespaced_values(obj, vals):
+    namespace = obj.get_name()
+    namespaced_vals = {}
+    for k,v in vals.iteritems():
+        value = obj.fmt(v)
+        if not k.startswith('{}_'.format(namespace)):
+            k = '{}_{}'.format(namespace, k)
+        namespaced_vals[k] = value
+    return namespaced_vals

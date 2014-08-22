@@ -25,9 +25,17 @@ class FormatTest(BaseSuite):
         m.iamnotmary = '{iamjoe}'
         self.assertEqual(m.iamnotmary, '{iamjoe}')
         self.assertEqual(m.fmt('{iamnotmary}'), 'John')
+        m.strict_fmt = False
         self.assertEqual(m.fmt('{imaginarystringhere}'), '')
+        m.strict_fmt = True
+        with self.assertRaises(KeyError):
+            self.assertEqual(m.fmt('{imaginarystringhere}'), '')
 
         self.assertEqual('{} am {}'.format('i', 'me'), 'i am me')
+
+    def test_fmt_returns_non_strings_as_is(self):
+        m = modpack()
+        self.assertEqual(m.fmt(True), True)
 
     def test_needs_variable_passing(self):
         m = modpack()

@@ -10,9 +10,9 @@ class ElasticSearch(Soppa):
             'soppa.package',]
 
     def setup():
-        self.supervisor.up('elasticsearch_supervisor.conf', '{supervisor.conf_dir}')
-        self.nginx.up('elasticsearch_nginx.conf', '{nginx.dir}conf/sites-enabled/')
         self.package.file_as_release(self.url)
+        self.action('up', 'elasticsearch_supervisor.conf', '{supervisor.conf_dir}', handler=['supervisor.restart'])
+        self.action('up', 'elasticsearch_nginx.conf', '{nginx.dir}conf/sites-enabled/', handler=['nginx.restart'])
 
     def health():
         # http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/_cluster_health.html

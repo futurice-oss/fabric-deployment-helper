@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from functools import wraps
 import os, sys, re, inspect, hashlib
-from soppa.internal.tools import import_string, Upload
+from soppa.internal.tools import import_string, Upload, get_full_dict, get_namespaced_class_values, fmt_namespaced_values
 from soppa import *
 
 # FABRIC: import and prefix fabric functions into their own namespace to not inadvertedly use them
@@ -22,6 +22,13 @@ class MetaClass(type):
         @wraps(fun)
         def _(self, *args, **kwargs):
             dry_run = os.environ.get('DRYRUN', False)
+            if fun.__name__=='setup':
+                # (for templating) namespace variables from all known needs to self
+                for instance in self.get_needs():
+                    namespaced_values = fmt_namespaced_values(instance, get_namespaced_class_values(instance))
+                    for k,v in namespaced_values.iteritems():
+                        if not hasattr(self, k):
+                            setattr(self, k, v)
             if dry_run:
                 result = NoOp()
                 print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self.get_name(), fun.__name__), args,kwargs
@@ -40,7 +47,8 @@ class MetaClass(type):
         return super(MetaClass, cls).__new__(cls, name, bases, attrs)
 
 # get_methods(ApiMixin)
-API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get', 'local_put', 'local_sudo', 'mlcd', 'prefix', 'put', 'run', 'sudo', 'up']
+API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get',
+'local_put', 'local_sudo', 'mlcd', 'prefix', 'put', 'run', 'sudo', 'up','setup']
 BASIC_NEEDS = ['need_db','need_web','need_vcs',]
 # need_ALIAS: allows generalizing, so changing need_web = 'soppa.apache', all configs still work.
 
@@ -132,10 +140,8 @@ class ApiMixin(object):
         caller_path = here(instance=self)
         if not to:
             raise Exception("Missing arguments")
-        #TODO:inspecting frames and wrappers do not seem to play well together
-        #caller_path = here(fn=inspect.getfile(sys._getframe(1)))
-        upload = Upload(frm, to, instance=self.parent, caller_path=caller_path)
-        self.template.up(*upload.args, context=self.parent.__dict__)
+        upload = Upload(frm, to, instance=self, caller_path=caller_path)
+        return self.template.up(*upload.args, context=self.__dict__)
 
 class DeployMixin(ApiMixin):
     def setup_needs(self):
@@ -263,6 +269,21 @@ class NeedMixin(InspectMixin):
     def has_need(self, string):
         return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
 
+    def rescope_namespaced_variables(self, curscope):
+        """
+        A(dict(a_b_c=1)) -- converts a_b_c => b_c, as it matches A
+            a.b_c
+        a = A(dict(b_c=1)) -- no changes
+            a.b.b_c
+            a.b.c
+        """
+        new_data = {}
+        for k,v in curscope.iteritems(): # A.A_B_c => b_c
+            if k.startswith('{}_'.format(self.get_name())):
+                aliased_key = '_'.join(k.split('_')[1:])
+                new_data[aliased_key] = v
+        return new_data
+
     def get_and_load_need(self, key, alias=None, ctx={}):
         """ On-demand needs=[] resolve """
         name = key.split('.')[-1]
@@ -272,11 +293,13 @@ class NeedMixin(InspectMixin):
         """
         Pass configuration from parent.
         - own namespace
-        - self.alias_var => alias.var, alias.alias_var
+        - self.alias_var =>
+            alias.var
+            alias.alias_var
         To prevent recursion:
         - {alias.foo} => {foo}
         - {self.alias.foo} => {foo}
-        - alias_key='{key}' raises exception
+        - alias_key = '{key}' raises exception
         """
         needs = self.get_needs(as_str=True)
         needs_keys = [k.split('.')[-1] for k in needs]
@@ -287,7 +310,7 @@ class NeedMixin(InspectMixin):
         curscope.update(**self.__dict__)
         def need_values(curscope, alias):
             cfg = {}
-            for k,v in curscope.iteritems():
+            for k,v in curscope.iteritems(): # A.B_c => b_c + c
                 if k.startswith('{}_'.format(alias)):
                     v = curscope.get(k, v)# latest assigned value
                     keyname = k.split('{}_'.format(alias))[-1]
@@ -304,6 +327,7 @@ class NeedMixin(InspectMixin):
             parent_values.update(**need_values(curscope, name))
 
         context = {}
+        context.update(**self.kwargs['ctx'])#parent configuration trickles down
         context.update(**parent_values)
         context['parent_instance'] = self
 

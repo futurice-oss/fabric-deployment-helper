@@ -28,7 +28,6 @@ class Nginx(Soppa):
             
         if not self.exists('{nginx_dir}conf/mime.types'):
             self.sudo('cp {nginx_dir}conf/mime.types.default {nginx_dir}conf/mime.types')
-        self.up('nginx.conf', '{nginx_dir}conf/')
 
         if not self.exists('{nginx_dir}sbin/nginx'):
             self.up('nginx.bash', '/usr/src/')
@@ -36,6 +35,8 @@ class Nginx(Soppa):
                 if self.operating.is_osx():
                     self.sudo('brew install pcre')
                 self.sudo('bash nginx.bash')
+
+        self.action('up', 'nginx.conf', '{nginx_dir}conf/', handler=['nginx.restart'])
 
     @with_settings(warn_only=True)
     def restart(self):
