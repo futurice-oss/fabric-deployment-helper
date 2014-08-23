@@ -4,7 +4,7 @@ from pprint import pprint as pp
 
 from fabric.api import env, task, execute
 from soppa.internal.tools import here, ObjectDict
-from soppa.internal.logs import dlog
+#from soppa.internal.logs import dlog
 
 # FABRIC
 env.use_ssh_config = True
@@ -37,7 +37,7 @@ def soppa_start():
 @task
 def soppa_end():
     print "Soppa: End"
-    from soppa.contrib import dlog
+    from soppa.internal.logs import dlog
     # TODO: save to a file on remote machine
     pp(dlog.data)
 

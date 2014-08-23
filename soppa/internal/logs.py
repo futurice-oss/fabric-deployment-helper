@@ -1,5 +1,6 @@
 import os, sys, datetime
-from soppa import *
+
+from fabric.api import env
 
 class DeployLog(object):
     def __init__(self, *args, **kwargs):

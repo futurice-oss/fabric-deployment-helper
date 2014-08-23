@@ -5,7 +5,6 @@ class Graphite(Soppa):
     Graphite by default installs to /opt/graphite/
     Carbon configuration from: https://github.com/graphite-project/carbon/tree/master/conf
     """
-    project = 'graphite'
     path = '/opt/graphite/'
     pathweb = '{path}webapp/graphite/'
     host = 'localhost'
@@ -27,8 +26,6 @@ class Graphite(Soppa):
     need_web = 'soppa.nginx'
 
     def setup(self):
-        print "setup"
-        return
         self.sudo('mkdir -p {path}')
         self.sudo('chown -R {deploy_user} {path}')
 

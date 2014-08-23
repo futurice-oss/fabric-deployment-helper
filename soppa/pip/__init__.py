@@ -6,7 +6,7 @@ class Pip(Soppa):
     packages_from = '{soppa.local_project_root}dist/'
     packages_to = '{www_root}dist/'
     extra_index = ''
-    dirhashes = {}
+    _dirhashes = {}
     needs=[
         'soppa.virtualenv',
         'soppa.file',
@@ -101,8 +101,8 @@ class Pip(Soppa):
     def path_in_sync(self, path):
         # TODO: save directory-hash for future, instead of being run-specific
         h = self.file.directory_hash(path)
-        curhash = copy.deepcopy(self.dirhashes.get(path, ''))
-        self.dirhashes[path] = h
+        curhash = copy.deepcopy(self._dirhashes.get(path, ''))
+        self._dirhashes[path] = h
         return curhash==h
 
     def sync(self, path=None, target_path=None):

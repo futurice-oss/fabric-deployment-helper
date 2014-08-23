@@ -105,14 +105,22 @@ class ObjectDict(dict):
 def get_full_dict(obj):
     return dict(sum([cls.__dict__.items() for cls in obj.__class__.__mro__ if cls.__name__ != "object"], obj.__dict__.items()))
 
+def get_class_dict(obj):
+    return dict({k:v for k,v in obj.__dict__.iteritems() if not k.startswith('__')})
+
+def is_configurable_property(key, value):
+    if key.startswith('__') \
+        or callable(value) \
+        or isinstance(value, property) \
+        or isinstance(value, staticmethod):
+            return False
+    return True
+
 def get_namespaced_class_values(obj):
     values = get_full_dict(obj.__class__)
     vals = {}
     for k,v in values.iteritems():
-        if k.startswith('__') \
-                or callable(v) \
-                or isinstance(v, property) \
-                or isinstance(v, staticmethod):
+        if not is_configurable_property(k, v):
             continue
         if k in obj.reserved_keys:
             continue

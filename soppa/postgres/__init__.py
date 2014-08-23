@@ -1,11 +1,11 @@
 from soppa.contrib import *
 
 class Postgres(Soppa):
-    path='/etc/postgresql/9.1/main/'
-    name='{project}'
-    user=''
-    password=''
-    needs=[
+    path = '/etc/postgresql/9.1/main/'
+    name = '{project}'
+    user = ''
+    password = ''
+    needs = [
         'soppa.operating',
         'soppa.template',
     ]

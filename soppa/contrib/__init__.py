@@ -4,11 +4,34 @@ from subprocess import call
 
 from soppa import *
 from soppa.internal.fmt import fmtkeys, formatloc, escape_bad_matches
-from soppa.internal.tools import import_string, get_full_dict, get_namespaced_class_values, fmt_namespaced_values
+from soppa.internal.tools import import_string, get_full_dict, get_namespaced_class_values, fmt_namespaced_values, get_class_dict, is_configurable_property
 from soppa.internal.logs import DeployLog, dlog
-from soppa.internal.mixins import ApiMixin, NeedMixin, InspectMixin, DeployMixin, ReleaseMixin
+from soppa.internal.mixins import ApiMixin, NeedMixin, DeployMixin, ReleaseMixin
 from soppa.internal.mixins import with_settings, settings#TODO: namespace under ApiMixin?
 from soppa.internal.manager import PackageManager
+
+def generate_config(module, include=[ReleaseMixin], exclude_vars=['project']):
+    c = {}
+    for k in include:
+        for key,val in get_class_dict(k).iteritems():
+            c[key] = val
+    for k in [module] + module.get_needs():
+        for key,val in k.__dict__.iteritems():
+            if key.startswith('{}_'.format(k.get_name())):
+                c[key] = val
+    cf = {}
+    for k,v in c.iteritems():
+        if not is_configurable_property(k, v):
+            continue
+        if k in Soppa.reserved_keys:
+            continue
+        if k in exclude_vars:
+            continue
+        if v is None:
+            continue
+        # can not format due: ReleaseMixin.path requiring current time
+        cf[k] = v
+    return cf
 
 # TODO: taken from Fabric... but str assignment on passing var is nasty, convert to being a dict internally
 # python-invoke will have a proper Result object, future-proof

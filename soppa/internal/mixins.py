@@ -31,7 +31,7 @@ class MetaClass(type):
                             setattr(self, k, v)
             if dry_run:
                 result = NoOp()
-                print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self.get_name(), fun.__name__), args,kwargs
+                print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self, fun.__name__), args,kwargs
             else:
                 result = fun(self, *args, **kwargs)
             return result
@@ -156,16 +156,18 @@ class DeployMixin(ApiMixin):
 class ReleaseMixin(object):
     needs = ['soppa.operating']
     deploy_user = os.environ.get('USER', 'root')
-    deploy_group = 'www-data'
+    deply_group = 'www-data'
     deploy_os = 'debian'
     project = None
+    host = 'localhost'
+    time = time.strftime('%Y%m%d%H%M%S')
+
     www_root = '/srv/www/'
     basepath = '{www_root}{project}/'
-    project_root = '{basepath}www/'
-    time = time.strftime('%Y%m%d%H%M%S')
-    path = '{basepath}releases/{time}'
-    host = 'localhost'
     packages_path = '{basepath}packages/'
+
+    project_root = '{basepath}www/'
+    path = '{basepath}releases/{time}'
 
     def ownership(self, owner=None):
         owner = owner or self.deploy_user
@@ -190,43 +192,7 @@ class ReleaseMixin(object):
     def id(self, url):
         return hashlib.md5(url).hexdigest()
 
-class InspectMixin(object):
-
-    def get_class_settings(self, for_self=False):
-        """ Get all class and instance variables.
-        - __dict__ is not enough.
-        - namespace module keys, to be usable directly, or via module instance (foo_bar vs foo.bar)
-        """
-        rs = {}
-        def is_valid(key, value):
-            # TODO: only allow strings, numbers?
-            if not key.startswith('__')\
-                and not inspect.ismethod(value)\
-                and not inspect.isfunction(value)\
-                and not inspect.isclass(value):
-                return True
-            return False
-        def is_for_module(key):
-            if key \
-                    and not for_self \
-                    and key not in self.reserved_keys \
-                    and key in module_keys:
-                        return True
-            return False
-        values = inspect.getmembers(self)
-        module_keys = self.__class__.__dict__.keys()
-        for key,value in values:
-            if is_valid(key, value):
-                if is_for_module(key):
-                    namespaced_key = key
-                    if not key.startswith('{0}_'.format(self.get_name())):
-                        namespaced_key = '{0}_{1}'.format(self.get_name(), key)
-                    rs[namespaced_key] = value # module scope
-                else:
-                    rs[key] = value # global scope
-        return rs
-
-class NeedMixin(InspectMixin):
+class NeedMixin(object):
     needs = []
     need_web = ''
     need_db = ''

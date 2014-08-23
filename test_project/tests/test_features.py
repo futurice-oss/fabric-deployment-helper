@@ -203,6 +203,15 @@ class ModuleTest(BaseSuite):
         with self.assertRaises(AttributeError):
             ma.modc.var
 
+    def test_module_var_mutability(self):
+        md = modd()
+        self.assertNotEquals(md.something, md.modf.something)
+        md = modd({'something': 3})
+        self.assertEquals(md.something, md.modf.something)
+        md = modd({'modd_something': 3})
+        self.assertNotEquals(md.something, md.modf.something)
+        self.assertTrue(md.something == md.modd_something == 3)
+
     def test_module_variable_waterfall(self):
         """
         child_foo -> self.child.foo/child_foo

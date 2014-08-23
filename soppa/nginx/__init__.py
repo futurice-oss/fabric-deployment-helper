@@ -1,13 +1,13 @@
 from soppa.contrib import *
 
 class Nginx(Soppa):
-    nginx_dir='/srv/nginx/'
-    nginx_user=None
-    nginx_group=None
-    nginx_restart_command='/etc/init.d/nginx restart'
-    nginx_start_command='/etc/init.d/nginx start'
+    nginx_dir = '/srv/nginx/'
+    nginx_user = 'www-data'
+    nginx_group = 'www-data'
+    nginx_restart_command = '/etc/init.d/nginx restart'
+    nginx_start_command = '/etc/init.d/nginx start'
     nginx_conf_dir = '{nginx_dir}conf/sites-enabled/'
-    needs=[
+    needs = [
         'soppa.file',
         'soppa.operating',
         'soppa.template',
