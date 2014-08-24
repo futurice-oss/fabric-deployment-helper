@@ -112,7 +112,10 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         for handler in handlers:
             handler_instance = self.get_handler(handler)
             if is_deferred(self, handler):
-                dlog.add('defer', 'all', [handler, handler_instance, result.__dict__])
+                rs = result.__dict__
+                rs['instance'] = handler_instance
+                rs['handler'] = handler
+                dlog.add('defer', 'all', rs)
                 continue
             # TODO: might always want restart, even if not modified?
             if is_dirty(result):

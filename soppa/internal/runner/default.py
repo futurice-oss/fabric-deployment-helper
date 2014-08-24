@@ -15,7 +15,7 @@ class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
     def release_path(self):
         if not hasattr(self, 'time'):
             self.time = time.strftime('%Y%m%d%H%M%S')
-        return self.fmt('{basepath}releases/{time}')
+        return self.fmt('{basepath}releases/{time}/')
 
     def ownership(self, owner=None):
         owner = owner or self.deploy_user
@@ -33,9 +33,20 @@ class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
         """ mv is atomic op on unix; allows seamless deploy """
         with self.cd(self.basepath):
             if self.operating.is_linux():
-                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path))
+                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path.rstrip('/')))
             else:
-                self.run('rm -f www && ln -sf {} www'.format(self.release_path))
+                self.run('rm -f www && ln -sf {} www'.format(self.release_path.rstrip('/')))
+
+    def copy_path_files_to_release_path(self):
+        # files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
+        for name,data in dlog.data['hosts'][env.host_string].iteritems():
+            for key in data.keys():
+                for k, action in enumerate(data[key]):
+                    target = action.get('target')
+                    if target:
+                        if self.path in target:
+                            release_target = target.replace(self.path, self.release_path)
+                            self.run('cp {} {}'.format(target, release_target))
 
     def setup_need(self, instance):
         """ Ensures module.setup() is run only once per-host """
@@ -203,6 +214,7 @@ class Runner(NeedMixin):
         # symlink self (modules)
         for module in modules:
             release = self.get_release(module)
+            release.copy_path_files_to_release_path()
             release.symlink()
 
         self.restart(needs_all)
@@ -240,8 +252,6 @@ class Runner(NeedMixin):
         for k,v in dlog.data['hosts'][env.host_string].iteritems():
             if k == 'all':
                 for deferred in v.get('defer'):
-                    # TODO: instance == instance method
-                    handler, instance, data = deferred
-                    if data['modified']:
-                        instance()
+                    if deferred['modified']:
+                        deferred['instance']()
                         #instance.restart()
