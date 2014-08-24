@@ -47,7 +47,9 @@ class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
                 self.run('rm -f www && ln -sf {} www'.format(self.release_path.rstrip('/')))
 
     def copy_path_files_to_release_path(self):
-        # files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
+        """
+        Files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
+        """
         for name,data in dlog.data['hosts'][env.host_string].iteritems():
             for key in data.keys():
                 for k, action in enumerate(data[key]):
@@ -55,7 +57,8 @@ class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
                     if target:
                         if self.path in target:
                             release_target = target.replace(self.path, self.release_path)
-                            self.run('cp {} {}'.format(target, release_target))
+                            reldir = os.path.dirname(release_target)
+                            self.run('mkdir -p {}; cp {} {}'.format(reldir, target, release_target))
 
     def setup_need(self, instance):
         """ Ensures module.setup() is run only once per-host """
@@ -260,6 +263,7 @@ class Runner(NeedMixin):
     def restart(self, needs):
         for k,v in dlog.data['hosts'][env.host_string].iteritems():
             if k == 'all':
+                # TODO: group, could be multiple changed files per module
                 for deferred in v.get('defer'):
                     if deferred['modified']:
                         deferred['instance']()
