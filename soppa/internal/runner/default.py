@@ -9,6 +9,15 @@ from soppa.internal.tools import import_string, generate_config
 from soppa.internal.logs import dlog
 
 class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
+    """
+    A deployment model for projects.
+    Example:
+    /www # www_root
+    /www/project/ # basepath
+    /www/project/www/ # path
+    /www/project/releases/X/ # release_path
+    www -> releases/X # <symlink>
+    """
     needs = ['soppa.operating',]
 
     @property
