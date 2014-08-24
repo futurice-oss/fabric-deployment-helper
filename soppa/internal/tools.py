@@ -77,20 +77,6 @@ class Upload(object):
             self.args = (filepath,) + self.args[1:]
         self.args = tuple([self.instance.fmt(k) for k in self.args])
 
-class LocalDict(dict):
-    """ Format variables against context on return """
-    def __getattr__(self, key):
-        try:
-            if key.startswith('__'):
-                return self[key]
-            return formatloc(self[key], self)
-        except KeyError:
-            # to conform with __getattr__ spec
-            raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        self[key] = value
-
 class ObjectDict(dict):
     def __getattr__(self, key):
         try:
@@ -136,3 +122,28 @@ def fmt_namespaced_values(obj, vals):
             k = '{}_{}'.format(namespace, k)
         namespaced_vals[k] = value
     return namespaced_vals
+
+def generate_config(module, include_cls=[], include_vars=[], exclude_vars=[]):
+    c = {}
+    for k in include_cls:
+        for key,val in get_class_dict(k).iteritems():
+            c[key] = getattr(module, key, val)# actual values from module, default to include
+    for k in [module] + module.get_needs():
+        for key,val in k.__dict__.iteritems():
+            if key.startswith('{}_'.format(k.get_name())):
+                c[key] = val
+    cf = {}
+    for k,v in c.iteritems():
+        if not is_configurable_property(k, v):
+            continue
+        if k in module.reserved_keys:
+            continue
+        if k in exclude_vars:
+            continue
+        if v is None:
+            continue
+        if '__' in k:
+            continue
+        cf[k] = module.fmt(v)
+    return cf
+

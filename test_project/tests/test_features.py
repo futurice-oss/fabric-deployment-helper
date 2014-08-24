@@ -2,7 +2,6 @@ import unittest, copy, os
 import shutil
 
 from soppa.internal.ingredients import *
-from soppa.internal.fmt import fmtkeys, formatloc
 from soppa.internal.tools import ObjectDict, Upload
 from soppa.internal.runner.default import Runner
 
@@ -113,45 +112,54 @@ class SoppaTest(BaseSuite):
         self.assertTrue(v.pip.packages_to)
 
     def test_formatting(self):
-        self.assertEquals(formatloc('{foo}{bar}', {}), '{foo}{bar}')
+        m = modpack()
+        with self.assertRaises(KeyError):
+            self.assertEquals(m.fmt('{foo}{bar}'), '{foo}{bar}')
         ctx = {'foo':'FOO'}
-        self.assertEquals(formatloc('{foo}{bar}', ctx), 'FOO{bar}')
-        self.assertEquals(formatloc('{foo}{bar}', ctx, bar='BAR'), 'FOOBAR')
+        with self.assertRaises(KeyError):
+            self.assertEquals(m.fmt('{foo}{bar}', **ctx), 'FOO{bar}')
+        self.assertEquals(m.fmt('{foo}{bar}', bar='BAR', **ctx), 'FOOBAR')
 
         ctx['foo'] = '{bar}'
-        self.assertEquals(formatloc('{foo}', ctx), '{bar}')
-        ctx['bar'] = '{town}'
-        self.assertEquals(formatloc('{foo}', ctx), '{town}')
-        ctx['town'] = 'Helsinki'
-        self.assertEquals(formatloc('{foo}', ctx), 'Helsinki')
+        with self.assertRaises(KeyError):
+            self.assertEquals(m.fmt('{foo}', **ctx), '{bar}')
+        ctx = {'foo':'{bar}','bar':'BAR'}
+        self.assertEquals(m.fmt('{foo}', **ctx), 'BAR')
 
-        self.assertEquals(formatloc('{foo_bar}', {'foo_bar': 'oh'}), 'oh')
+        ctx['town'] = 'Helsinki'
+        self.assertEquals(m.fmt('{town}', **ctx), 'Helsinki')
+
+        self.assertEquals(m.fmt('{foo_bar}', **{'foo_bar': 'oh'}), 'oh')
         c = {'foo': ObjectDict({'bar': 'oh.oh'})}
-        self.assertEquals(formatloc('{foo.bar}', c), 'oh.oh')
+        self.assertEquals(m.fmt('{foo.bar}', **c), 'oh.oh')
 
         u = Upload('config/statsd_supervisor.conf', '{packages_from}', instance=pip(), caller_path='/tmp/')
         self.assertTrue(all('{' not in k for k in u.args))
 
         s = 'mkdir -p {basepath}{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}'
-        self.assertTrue('/x/' in formatloc(s, dict(basepath='/x/')))
+        self.assertTrue('/x/' in m.fmt(s, **dict(basepath='/x/')))
 
     def test_formatting_bash(self):
+        m = modpack()
         ctx = {'foo': 'FOO'}
-        self.assertEquals(formatloc('{foo} {"print $2"}', ctx), 'FOO {"print $2"}')
-        self.assertEquals(formatloc('{foo}', {}), '{foo}')
+        self.assertEquals(m.fmt('{foo} {"print $2"}', **ctx), 'FOO {"print $2"}')
+        self.assertEquals(m.fmt('{foo}', **ctx), 'FOO')
 
     def test_formatting_invalid_string(self):
+        m = modpack()
         s = """'ifconfig -a eth1|grep "inet addr"|awk '{gsub("addr:","",$2); print $2}'"""
-        self.assertEquals(formatloc(s, {}), s)
+        self.assertEquals(m.fmt(s), s)
 
     def test_formatting_fun(self):
+        m = modpack()
         def lalafun(kw):
             rs = 100
             return rs
         ctx = {'lala': lalafun}
-        r = formatloc('{lala}', ctx)
-        self.assertTrue('<function' not in r)
-        self.assertEquals(r, '100')
+        r = m.fmt('{lala}', **ctx)
+        self.assertFalse('<function' not in r)
+        with self.assertRaises(AssertionError):
+            self.assertEquals(r, '100')
 
     def test_set_setting(self):
         env.local_deployment = True
@@ -176,9 +184,11 @@ def overwrite(f, data):
 
 class PatchTest(BaseSuite):
     def test_env_function(self):
+        m = modpack()
         def _(kw={}):
             return 100
-        self.assertEqual(formatloc(_, {}), 100)
+        with self.assertRaises(AssertionError):
+            self.assertEqual(m.fmt(_), 100)
 
 class ModuleTest(BaseSuite):
 

@@ -7,7 +7,7 @@ class NodeJS(Soppa):
     version = '0.10.29'
     binary_dir = '{root.basepath}venv/bin/'
     basepath = '{root.basepath}'
-    needs=[
+    needs = [
         'soppa.pip',
         'soppa.virtualenv',
     ]

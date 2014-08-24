@@ -1,21 +1,70 @@
-import os, copy
+import os, copy, time
 from pprint import pprint as pp
 import itertools
 
 from fabric.api import env, execute, task
 
-from soppa.internal.mixins import DeployMixin, NeedMixin
-from soppa.internal.tools import import_string
+from soppa.internal.mixins import NeedMixin, ApiMixin, FormatMixin, ReleaseMixin
+from soppa.internal.tools import import_string, generate_config
 from soppa.internal.logs import dlog
 
-class Runner(DeployMixin, NeedMixin):
+class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
+    needs = ['soppa.operating',]
+
+    @property
+    def release_path(self):
+        if not hasattr(self, 'time'):
+            self.time = time.strftime('%Y%m%d%H%M%S')
+        return self.fmt('{basepath}releases/{time}')
+
+    def ownership(self, owner=None):
+        owner = owner or self.deploy_user
+        self.sudo('chown -fR {owner} {basepath}', owner=owner)
+
+    def dirs(self):
+        self.sudo('mkdir -p {www_root}dist/')
+        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
+        self.run('mkdir -p {}'.format(self.release_path))
+        if not self.exists(self.path):
+            with self.cd(self.basepath):
+                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
+
+    def symlink(self):
+        """ mv is atomic op on unix; allows seamless deploy """
+        with self.cd(self.basepath):
+            if self.operating.is_linux():
+                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path))
+            else:
+                self.run('rm -f www && ln -sf {} www'.format(self.release_path))
+
+    def setup_need(self, instance):
+        """ Ensures module.setup() is run only once per-host """
+        key_name = '{0}.setup'.format(instance.get_name())
+        if self.is_performed(key_name):
+            return
+        getattr(instance, 'setup')()
+        self.set_performed(key_name)
+
+    def is_performed(self, fn):
+        env.performed.setdefault(env.host_string, {})
+        env.performed[env.host_string].setdefault(fn, False)
+        return env.performed[env.host_string][fn]
+
+    def set_performed(self, fn):
+        self.is_performed(fn)
+        env.performed[env.host_string][fn] = True
+
+    def id(self, url):
+        return hashlib.md5(url).hexdigest()
+
+class Runner(NeedMixin):
     """
-    A Runner allows more control over deployments that share multiple modules,
-    by centralizing things like eg. service restarts
+    A Runner allows more control over deployments, by acting as a wrapper around the deployment life-cycle.
     """
     needs = ['soppa.operating',
             'soppa.remote',
             'soppa.git',]
+    release_cls = RunnerReleaseMixin
     def __init__(self, config={}, hosts={}, roles={}, recipe={}, *args, **kwargs):
         super(Runner, self).__init__(*args, **kwargs)
         self.config = config
@@ -24,6 +73,7 @@ class Runner(DeployMixin, NeedMixin):
         self.hosts = hosts
         self.roles = roles
         self.recipe = recipe
+        self._CACHE = {}
 
     _modules = None
     def get_module_classes(self):
@@ -36,12 +86,30 @@ class Runner(DeployMixin, NeedMixin):
                 modules.append(fn)
             self._modules = modules
         return self._modules
+
+    def get_release(self, module):
+        key = 'release_{}'.format(module.get_name())
+        data = self._CACHE.get(key)
+        if not data:
+            data = self.release_cls()
+            config = self.get_module_config(module)
+            for k,v in config.iteritems():
+                setattr(data, k, v)
+            self._CACHE[key] = data
+        return data
+
+    def get_module_config(self, module):
+        key = 'module_config_{}'.format(module.get_name())
+        data = self._CACHE.get(key)
+        if not data:
+            data = generate_config(module, include_cls=[ReleaseMixin])
+            self._CACHE[key] = data
+        return data
     
     def get_module(self):
         return self.get_modules()[0]
 
     def get_roles_for_host(self, name):
-        print "GET_ROLES",name,self.roles
         roles = []
         for k,v in self.roles.iteritems():
             if name in v.get('hosts', []):
@@ -68,7 +136,6 @@ class Runner(DeployMixin, NeedMixin):
             raise Exception("No hosts configured for {}".format(ingredient))
 
         for ingredient in self.recipe:
-            pp(ingredient)
             hosts = self.get_hosts_for(ingredient['roles'])
             modules = ingredient['modules']
             # create a new standalone instance for execution
@@ -93,6 +160,7 @@ class Runner(DeployMixin, NeedMixin):
 
         needs_all = set()
         module_classes = self.get_module_classes()
+
         # instantiate with configuration
         modules = []
         for module in module_classes:
@@ -106,20 +174,22 @@ class Runner(DeployMixin, NeedMixin):
         
         # configure, prepare dependent modules
         for module in modules:
+            release = self.get_release(module)
+
             needs = module.get_needs()
             for need in needs:
                 needs_all.add(need)
 
-            if module.project:
-                module.dirs()
-            module.ownership()
+            if release.project:
+                release.dirs()
+            release.ownership()
 
             # configure everything
             self.configure(needs)
 
             # setup everything, except self
             for need in needs:
-                need.setup_needs()
+                release.setup_need(need)
 
         # configure self (modules)
         for module in modules:
@@ -129,6 +199,11 @@ class Runner(DeployMixin, NeedMixin):
         # setup self (modules)
         for module in modules:
             module.setup()
+
+        # symlink self (modules)
+        for module in modules:
+            release = self.get_release(module)
+            release.symlink()
 
         self.restart(needs_all)
 

@@ -3,35 +3,11 @@ from optparse import OptionParser
 from subprocess import call
 
 from soppa import *
-from soppa.internal.fmt import fmtkeys, formatloc, escape_bad_matches
 from soppa.internal.tools import import_string, get_full_dict, get_namespaced_class_values, fmt_namespaced_values, get_class_dict, is_configurable_property
 from soppa.internal.logs import DeployLog, dlog
-from soppa.internal.mixins import ApiMixin, NeedMixin, DeployMixin, ReleaseMixin
+from soppa.internal.mixins import ApiMixin, NeedMixin, ReleaseMixin, FormatMixin
 from soppa.internal.mixins import with_settings, settings#TODO: namespace under ApiMixin?
 from soppa.internal.manager import PackageManager
-
-def generate_config(module, include=[ReleaseMixin], exclude_vars=['project']):
-    c = {}
-    for k in include:
-        for key,val in get_class_dict(k).iteritems():
-            c[key] = val
-    for k in [module] + module.get_needs():
-        for key,val in k.__dict__.iteritems():
-            if key.startswith('{}_'.format(k.get_name())):
-                c[key] = val
-    cf = {}
-    for k,v in c.iteritems():
-        if not is_configurable_property(k, v):
-            continue
-        if k in Soppa.reserved_keys:
-            continue
-        if k in exclude_vars:
-            continue
-        if v is None:
-            continue
-        # can not format due: ReleaseMixin.path requiring current time
-        cf[k] = v
-    return cf
 
 # TODO: taken from Fabric... but str assignment on passing var is nasty, convert to being a dict internally
 # python-invoke will have a proper Result object, future-proof
@@ -40,7 +16,7 @@ class AttributeString(str):
     def stdout(self):
         return str(self)
 
-class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
+class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
     reserved_keys = ['needs','reserved_keys','env']
     autoformat = True
     needs = []
@@ -106,22 +82,6 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
         for k,v in fmt_namespaced_values(self, namespaced_values).iteritems():
             if k not in keys:
                 setattr(self, k, v)
-
-    def __getattr__(self, key):
-        try:
-            result = self.__dict__[key]
-        except KeyError, e:
-            # lazy-load dependencies defined in needs=[]
-            if not key.startswith('__') and self.has_need(key):
-                instance = self._load_need(key, alias=None, ctx={'args':self.args, 'kwargs': self.kwargs})
-                name = key.split('.')[-1]
-                setattr(self, name, instance)
-                return instance
-            raise AttributeError(e)
-        return result
-
-    def _load_need(self, key, alias=None, ctx={}):
-        return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)
 
     def action(self, name, *args, **kwargs):
         """
@@ -202,15 +162,6 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
             self._CACHE[key] = PackageManager(self)
         return self._CACHE[key]
 
-    def is_performed(self, fn):
-        env.performed.setdefault(env.host_string, {})
-        env.performed[env.host_string].setdefault(fn, False)
-        return env.performed[env.host_string][fn]
-
-    def set_performed(self, fn):
-        self.is_performed(fn)
-        env.performed[env.host_string][fn] = True
-
     @property
     def parent(self):
         """ When instance is part of needs[], return the parent. Default is self. """
@@ -226,42 +177,6 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
             if id(result)==identifier:
                 break
         return result
-
-    def fmt(self, string, **kwargs):
-        """ Format a string.
-        self.fmt(string) vs string.format(self=self)
-        self.fmt(string, foo=2) vs string.format(foo=2, self=self)
-
-        Adds self as formatting argument, and prefix keys with self., if key not in arguments.
-        {foo} => {self.foo}.format(self=self)
-        {foo} kwargs(foo=2) => {foo}.format(foo=foo)
-        {foo.bar} kwargs(foo=2) => {foo}.format(self=self)
-        """
-        for times in range(6):
-            keys = []
-            if isinstance(string, basestring):
-                string = escape_bad_matches(string)
-                if '{' not in string:
-                    break
-                keys = fmtkeys(string)
-            else:
-                return string
-            kwargs_keys = kwargs.keys()
-            for key in keys:
-                if key not in kwargs_keys:
-                    if not key.startswith('self.'):
-                        realkey = key.split('.')[0]
-                        if hasattr(self, realkey):
-                            if self.strict_fmt and getattr(self, realkey) is None:
-                                raise Exception("Undefined key: {}".format(realkey))
-                            string = string.replace('{'+key+'}', '{self.'+key+'}')
-                        else:
-                            if not self.strict_fmt:
-                                kwargs.setdefault(key, '')
-            if '{self.' in string:
-                kwargs['self'] = self
-            string = string.format(**kwargs)
-        return string
 
     def copy_configuration(self, recurse=False):
         """ Prepare local copies of module configuration files. Does not overwrite existing files. """

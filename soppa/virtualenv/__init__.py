@@ -17,9 +17,8 @@ class Virtualenv(Soppa):
         if self.root.project is None:
             print "No project configured, skipping virtualenv setup"
             return
-        with settings(warn_only=True):
-            self.run('[ ! -d {virtualenv_path} ] && rm -rf {virtualenv_path} && '
-                 'virtualenv'
+        if not self.exists(self.virtualenv_path):
+            self.run('virtualenv'
                  ' --extra-search-dir={pip.packages_to}'
                  ' --prompt="({root.project})"'
                  ' {virtualenv_path}')

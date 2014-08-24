@@ -1,8 +1,6 @@
 import unittest, copy, os
 from pprint import pprint as pp
 
-from soppa.internal.fmt import fmtkeys
-
 from ..modpack import modpack
 
 class BaseSuite(unittest.TestCase):
@@ -13,7 +11,7 @@ class FormatTest(BaseSuite):
         m = modpack()
         self.assertEquals(m._expects({'foo': 1, 'bar': 2}, ['foo']), {'foo': 1})
         m.hello = 'hello'
-        self.assertEquals(fmtkeys('{hello} {path}'), ['hello','path'])
+        self.assertEquals(m.fmtkeys('{hello} {path}'), ['hello','path'])
         self.assertEquals(m.fmt('{hello} world'), 'hello world')
         self.assertEquals(m.fmt('hello world'), 'hello world')
         self.assertEquals(m.fmt('{hello} world', hello='bart'), 'bart world')

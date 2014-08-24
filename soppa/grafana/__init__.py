@@ -18,10 +18,7 @@ class Grafana(Soppa):
         # - normal file download, ensures dest= exists
         # self.package.get_file(url, dest)
         # - handle dirs, ownership, symlink ... according to chosen need_release
-        self.dirs()
         self.package.file_as_release(self.url, dest=self.path)
-        self.ownership()
-        self.symlink()
 
         if self.has_need('nginx'):
             self.action('up', 'grafana_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])

@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from functools import wraps
 import os, sys, re, inspect, hashlib
+import string, copy
 from soppa.internal.tools import import_string, Upload, get_full_dict, get_namespaced_class_values, fmt_namespaced_values
 from soppa import *
 
@@ -143,18 +144,7 @@ class ApiMixin(object):
         upload = Upload(frm, to, instance=self, caller_path=caller_path)
         return self.template.up(*upload.args, context=self.__dict__)
 
-class DeployMixin(ApiMixin):
-    def setup_needs(self):
-        """ Ensures .setup() is only run once per-module """
-        for instance in self.get_needs():
-            key_name = '{0}.setup'.format(instance.get_name())
-            if self.is_performed(key_name):
-                continue
-            getattr(instance, 'setup')()
-            self.set_performed(key_name)
-
 class ReleaseMixin(object):
-    needs = ['soppa.operating']
     deploy_user = os.environ.get('USER', 'root')
     deploy_group = 'www-data'
     deploy_os = 'debian'
@@ -165,35 +155,6 @@ class ReleaseMixin(object):
     basepath = '{www_root}{project}/'
     packages_path = '{basepath}packages/'
     path = '{basepath}www/'
-
-    @property
-    def release_path(self):
-        if not hasattr(self, 'time'):
-            self.time = time.strftime('%Y%m%d%H%M%S')
-        return self.fmt('{basepath}releases/{time}')
-
-    def ownership(self, owner=None):
-        owner = owner or self.deploy_user
-        self.sudo('chown -fR {owner} {basepath}', owner=owner)
-
-    def dirs(self):
-        self.sudo('mkdir -p {www_root}dist/')
-        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
-        self.run('mkdir -p {}'.format(self.release_path))
-        if not self.exists(self.path):
-            with self.cd(self.basepath):
-                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
-
-    def symlink(self):
-        """ mv is atomic op on unix; allows seamless deploy """
-        with self.cd(self.basepath):
-            if self.operating.is_linux():
-                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path))
-            else:
-                self.run('rm -f www && ln -sf {} www'.format(self.release_path))
-
-    def id(self, url):
-        return hashlib.md5(url).hexdigest()
 
 class NeedMixin(object):
     needs = []
@@ -296,11 +257,81 @@ class NeedMixin(object):
             parent_values.update(**need_values(curscope, name))
 
         context = {}
-        context.update(**self.kwargs['ctx'])#parent configuration trickles down
+        context.update(**self.kwargs.get('ctx', {}))#parent configuration trickles down
         context.update(**parent_values)
         context['parent_instance'] = self
 
         return fn(ctx_parent=context)
+
+    def _load_need(self, key, alias=None, ctx={}):
+        return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)
+
+    def __getattr__(self, key):
+        try:
+            result = self.__dict__[key]
+        except KeyError, e:
+            # lazy-load dependencies defined in needs=[]
+            if not key.startswith('__') and self.has_need(key):
+                instance = self._load_need(key, alias=None, ctx={'args':self.args, 'kwargs': self.kwargs})
+                name = key.split('.')[-1]
+                setattr(self, name, instance)
+                return instance
+            raise AttributeError(e)
+        return result
+
+class FormatMixin(object):
+    ALLOWED_CHARS = string.ascii_letters + '_.'
+    strict_fmt = True
+
+    def is_ascii_letters(self, s, bucket):
+        return all(c in bucket for c in s)
+
+    def escape_bad_matches(self, s):
+        for match in re.findall('{(.+?)}', s):
+            if not self.is_ascii_letters(match, self.ALLOWED_CHARS):
+                match = re.escape(match)
+                s = re.sub('({0})'.format(match),
+                        r'{\1}', s)
+        return s
+
+    def fmtkeys(self, s):
+        return [k[1] for k in string.Formatter().parse(s) if k[1]]
+
+    def fmt(self, string, **kwargs):
+        """ Format a string.
+        self.fmt(string) vs string.format(self=self)
+        self.fmt(string, foo=2) vs string.format(foo=2, self=self)
+
+        Adds self as formatting argument, and prefix keys with self., if key not in arguments.
+        {foo} => {self.foo}.format(self=self)
+        {foo} kwargs(foo=2) => {foo}.format(foo=foo)
+        {foo.bar} kwargs(foo=2) => {foo}.format(self=self)
+        """
+        for times in range(6):
+            keys = []
+            if isinstance(string, basestring):
+                string = self.escape_bad_matches(string)
+                if '{' not in string:
+                    break
+                keys = self.fmtkeys(string)
+            else:
+                return string
+            kwargs_keys = kwargs.keys()
+            for key in keys:
+                if key not in kwargs_keys:
+                    if not key.startswith('self.'):
+                        realkey = key.split('.')[0]
+                        if hasattr(self, realkey):
+                            if self.strict_fmt and getattr(self, realkey) is None:
+                                raise Exception("Undefined key: {}".format(realkey))
+                            string = string.replace('{'+key+'}', '{self.'+key+'}')
+                        else:
+                            if not self.strict_fmt:
+                                kwargs.setdefault(key, '')
+            if '{self.' in string:
+                kwargs['self'] = self
+            string = string.format(**kwargs)
+        return string
 
 class NoOp(object):
     succeeded = True
