@@ -156,18 +156,21 @@ class DeployMixin(ApiMixin):
 class ReleaseMixin(object):
     needs = ['soppa.operating']
     deploy_user = os.environ.get('USER', 'root')
-    deply_group = 'www-data'
+    deploy_group = 'www-data'
     deploy_os = 'debian'
     project = None
     host = 'localhost'
-    time = time.strftime('%Y%m%d%H%M%S')
 
     www_root = '/srv/www/'
     basepath = '{www_root}{project}/'
     packages_path = '{basepath}packages/'
+    path = '{basepath}www/'
 
-    project_root = '{basepath}www/'
-    path = '{basepath}releases/{time}'
+    @property
+    def release_path(self):
+        if not hasattr(self, 'time'):
+            self.time = time.strftime('%Y%m%d%H%M%S')
+        return self.fmt('{basepath}releases/{time}')
 
     def ownership(self, owner=None):
         owner = owner or self.deploy_user
@@ -176,8 +179,8 @@ class ReleaseMixin(object):
     def dirs(self):
         self.sudo('mkdir -p {www_root}dist/')
         self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
-        self.run('mkdir -p {path}')
-        if not self.exists(self.project_root):
+        self.run('mkdir -p {}'.format(self.release_path))
+        if not self.exists(self.path):
             with self.cd(self.basepath):
                 self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
 
@@ -185,9 +188,9 @@ class ReleaseMixin(object):
         """ mv is atomic op on unix; allows seamless deploy """
         with self.cd(self.basepath):
             if self.operating.is_linux():
-                self.run('ln -s {path} www.new; mv -T www.new www')
+                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path))
             else:
-                self.run('rm -f www && ln -sf {path} www')
+                self.run('rm -f www && ln -sf {} www'.format(self.release_path))
 
     def id(self, url):
         return hashlib.md5(url).hexdigest()

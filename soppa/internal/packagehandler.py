@@ -53,7 +53,7 @@ class PackageHandler(object):
                 '')
     
     def target_conf_path(self):
-        return os.path.join(self.need.soppa.local_project_root,
+        return os.path.join(self.need.soppa.local_path,
             self.need.soppa.local_conf_path,
             self.need.get_name(), '')
 

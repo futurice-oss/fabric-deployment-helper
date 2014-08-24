@@ -45,7 +45,7 @@ class Upload(object):
         dirs.append(os.path.join(self.instance.soppa.basedir,
             self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
-        dirs.append(os.path.join(self.instance.soppa.local_project_root,
+        dirs.append(os.path.join(self.instance.soppa.local_path,
             self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
         dirs.append(os.path.join(self.instance.module_path(),

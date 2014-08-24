@@ -3,7 +3,7 @@ import hashlib, os, tempfile, re, inspect, sys, time, copy
 from soppa.contrib import *
 
 class Pip(Soppa):
-    packages_from = '{soppa.local_project_root}dist/'
+    packages_from = '{soppa.local_path}dist/'
     packages_to = '{www_root}dist/'
     extra_index = ''
     _dirhashes = {}
@@ -117,7 +117,7 @@ class Pip(Soppa):
 
     def install_pip(self):
         """ NOTE: pip can remain in broken state, requires removing old /usr/local/bin/pip* files first """
-        path = '{project_root}dist/'
+        path = '{path}dist/'
         self.sudo('mkdir -p {0}'.format(path))
         with self.cd(path):
             self.sudo('wget -S https://bootstrap.pypa.io/get-pip.py')

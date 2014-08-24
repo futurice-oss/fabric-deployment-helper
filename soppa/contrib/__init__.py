@@ -284,7 +284,7 @@ class Soppa(DeployMixin, NeedMixin, ReleaseMixin):
 
     def local_module_conf_path(self):
         return os.path.join(
-            self.soppa.local_project_root,
+            self.soppa.local_path,
             self.soppa.local_conf_path,
             self.get_name(),
             '')

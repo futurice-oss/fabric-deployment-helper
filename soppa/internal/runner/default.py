@@ -63,14 +63,13 @@ class Runner(DeployMixin, NeedMixin):
 
     def run(self):
         """ A run lives in a Fabric execution (env.host_string) context """
-        print "RUN",self
+        print "RUN: {}".format(self)
         if not all([self.get_hosts_for(ingredient['roles']) for ingredient in self.recipe]):
             raise Exception("No hosts configured for {}".format(ingredient))
 
         for ingredient in self.recipe:
             pp(ingredient)
             hosts = self.get_hosts_for(ingredient['roles'])
-            print "=hosts",hosts
             modules = ingredient['modules']
             # create a new standalone instance for execution
             runner = Runner(
@@ -79,16 +78,11 @@ class Runner(DeployMixin, NeedMixin):
                     roles=self.roles,
                     recipe=self.recipe)
             runner.current_recipe = ingredient
-            print "modules:"
-            pp(modules)
-            print "hosts:"
-            pp(hosts)
             execute(runner._run, hosts=hosts)
 
     def _run(self, ingredient={}):
         """ At this point in time execution is on a specific host. Configuration prepared accordingly """
-        print "_RUN",self,env.host_string
-        print "current_recipe", self.current_recipe
+        print "host_string: {}, recipe: {}".format(env.host_string, self.current_recipe)
         config = copy.deepcopy(self.config)
         # Configuration: hosts > roles > config > classes
         role_config = {}
@@ -105,7 +99,7 @@ class Runner(DeployMixin, NeedMixin):
             modules.append(module(config))
 
         if not modules:
-            print "Nothing to do..."
+            print "Nothing to do, exiting."
             return
 
         self.ask_sudo_password(modules[0], capture=False)
