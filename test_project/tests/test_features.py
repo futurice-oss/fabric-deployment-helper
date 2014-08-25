@@ -2,7 +2,7 @@ import unittest, copy, os
 import shutil
 
 from soppa.internal.ingredients import *
-from soppa.internal.tools import ObjectDict, Upload
+from soppa.internal.tools import ObjectDict, Upload, generate_config
 from soppa.internal.runner.default import Runner
 
 # failures, if not importing ahead. Why?
@@ -176,6 +176,12 @@ class SoppaTest(BaseSuite):
         self.assertEquals(template.determine_target_filename('/1/foo.txt', '/tmp/'), '/tmp/foo.txt')
         self.assertEquals(template.determine_target_filename('/1/foo.txt', '/tmp/bar.txt'), '/tmp/bar.txt')
         self.assertEquals(template.determine_target_filename('/1/foo.txt', '/tmp'), '/tmp')
+
+    def test_config_gathering(self):
+        m = modpack()
+        self.assertEquals(generate_config(m, include_cls=[ReleaseMixin])['project'], m.project)
+        m = modpack(project='custom-name')
+        self.assertEquals(generate_config(m, include_cls=[ReleaseMixin])['project'], m.project)
 
 def overwrite(f, data):
     f.seek(0)

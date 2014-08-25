@@ -111,6 +111,8 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
 
         for handler in handlers:
             handler_instance = self.get_handler(handler)
+            if isinstance(handler_instance, basestring):
+                raise Exception("Class variable collision for handler {}; namespacing issue?".format(handler))
             if is_deferred(self, handler):
                 rs = result.__dict__
                 rs['instance'] = handler_instance
