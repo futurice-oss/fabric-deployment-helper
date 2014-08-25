@@ -23,5 +23,3 @@ class Rsync(Soppa):
             source=source,
             target=target,
             rsync_target=self.rsync_target(),)
-
-rsync_task, rsync = register(Rsync)

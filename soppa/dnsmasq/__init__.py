@@ -35,5 +35,3 @@ class Dnsmasq(Soppa):
 
     def stopcmd():
         self.sudo('launchctl unload /Library/LaunchDaemons/homebrew.mxcl.dnsmasq.plist')
-
-dnsmasq_task, dnsmasq = register(Dnsmasq)

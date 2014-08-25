@@ -13,5 +13,3 @@ class Git(Soppa):
                 filename=f.name))
             self.put(f.name, '{packages_path}')
             self.run('tar zxf {packages_path}{filename} -C {path}', filename=f.name)
-
-git_task, git = register(Git)

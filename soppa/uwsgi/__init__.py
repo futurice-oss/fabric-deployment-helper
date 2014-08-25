@@ -40,4 +40,3 @@ class Uwsgi(Soppa):
         with self.virtualenv.activate():
             self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.deploy_user} --gid {root.deploy_group} --daemonize {root.basepath}logs/{root.project}-emperor.log')
 
-uwsgi_task, uwsgi = register(Uwsgi)

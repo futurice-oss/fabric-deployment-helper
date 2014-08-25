@@ -103,10 +103,7 @@ class Runner(NeedMixin):
         if not self._modules:
             modules = []
             for m in self.current_recipe.get('modules', []):
-                module = import_string(m)
-                name = m.split('.')[-1]
-                fn = getattr(module, name)
-                modules.append(fn)
+                modules.append(NeedMixin().load(m))
             self._modules = modules
         return self._modules
 

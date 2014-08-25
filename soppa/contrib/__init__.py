@@ -237,13 +237,4 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         return unicode(self.get_name())
 
 def register(klass, *args, **kwargs):
-    """ Add as Fabric task, to be visible in 'fab -l' listing """
-    name = klass.__name__.lower()
-
-    fabric_task = None
-    def task_instantiate():
-        klass().cli_interface()
-
-    fabric_task = task(name=name)(task_instantiate)
-
-    return fabric_task, klass
+    return None, klass

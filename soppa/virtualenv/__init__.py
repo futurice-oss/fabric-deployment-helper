@@ -14,9 +14,6 @@ class Virtualenv(Soppa):
     ]
 
     def setup(self):
-        if self.root.project is None:
-            print "No project configured, skipping virtualenv setup"
-            return
         if not self.exists(self.virtualenv_path):
             self.run('virtualenv'
                  ' --extra-search-dir={pip.packages_to}'
@@ -38,5 +35,3 @@ class Virtualenv(Soppa):
                 yield
         else:
             yield
-
-virtualenv_task, virtualenv = register(Virtualenv)

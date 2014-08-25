@@ -22,5 +22,3 @@ class Vagrant(Soppa):
         # local change
         aslocal()
         self.file.set_setting('/etc/hosts', '{0} {1}'.format(self.guest_ip, name))
-
-vagrant_task, vagrant = register(Vagrant)

@@ -214,12 +214,31 @@ class NeedMixin(object):
                 new_data[aliased_key] = v
         return new_data
 
+    def load(self, name):
+        """ Load a module class by its name
+        nginx -> soppa.Nginx
+        mymodule.nginx -> mymodule.Nginx
+        """
+        cls_name = name.split('.')[-1]
+        import_name = copy.copy(name)
+        if '.' not in name:
+            import_name = '{}.{}'.format(DEFAULT_NS, name)
+        module = import_string(import_name)
+        cls = self.match_module_to_class(module, cls_name)
+        return getattr(module, cls)
+
+    def match_module_to_class(self, module, name):
+        pattern = '^{}$'.format(name.capitalize())
+        matches = [re.findall(pattern, k, re.IGNORECASE) for k in module.__dict__.keys()]
+        return [k.pop() for k in matches if k].pop()
+
     def get_and_load_need(self, key, alias=None, ctx={}):
-        """ On-demand needs=[] resolve """
+        """ On-demand needs=[] resolve.
+        soppa.nginx -> Nginx()
+        """
         name = key.split('.')[-1]
+        cls = self.load(key)
         alias = alias or name
-        module = import_string(key)
-        fn = getattr(module, name)
         """
         Pass configuration from parent.
         - own namespace
@@ -261,7 +280,7 @@ class NeedMixin(object):
         context.update(**parent_values)
         context['parent_instance'] = self
 
-        return fn(ctx_parent=context)
+        return cls(ctx_parent=context)
 
     def _load_need(self, key, alias=None, ctx={}):
         return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)

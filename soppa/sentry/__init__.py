@@ -38,4 +38,3 @@ class Sentry(Soppa):
 
         self.up('conf.py', '{path}')
 
-sentry_task, sentry = register(Sentry)

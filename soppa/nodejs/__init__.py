@@ -32,5 +32,3 @@ class NodeJS(Soppa):
         with self.cd('{basepath}'):
             for symlinked_binary in self.symlink_npm:
                 self.sudo(self.fmt('ln -sf $(pwd)/node_modules/.bin/{symlinked_binary} {binary_dir}', symlinked_binary=symlinked_binary))
-
-nodejs_task, nodejs = register(NodeJS)

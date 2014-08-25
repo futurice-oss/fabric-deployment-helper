@@ -1,14 +1,14 @@
 import unittest, copy, os
 from pprint import pprint as pp
 
-from ..modpack import modpack
+from ..modpack import ModPack
 
 class BaseSuite(unittest.TestCase):
     pass
 
 class FormatTest(BaseSuite):
     def test_fmt(self):
-        m = modpack()
+        m = ModPack()
         self.assertEquals(m._expects({'foo': 1, 'bar': 2}, ['foo']), {'foo': 1})
         m.hello = 'hello'
         self.assertEquals(m.fmtkeys('{hello} {path}'), ['hello','path'])
@@ -32,11 +32,11 @@ class FormatTest(BaseSuite):
         self.assertEqual('{} am {}'.format('i', 'me'), 'i am me')
 
     def test_fmt_returns_non_strings_as_is(self):
-        m = modpack()
+        m = ModPack()
         self.assertEqual(m.fmt(True), True)
 
     def test_needs_variable_passing(self):
-        m = modpack()
+        m = ModPack()
         self.assertEquals(m.modc.soreal, m.modc_soreal)
         self.assertNotEquals(m.modc.soreal, m.soreal)
         self.assertNotEquals(m.modc_soreal, m.soreal)
@@ -54,11 +54,11 @@ class FormatTest(BaseSuite):
         self.assertEquals(m.project, 'modpack')
 
     def test_resolution_order(self):
-        m = modpack()
+        m = ModPack()
         self.assertEquals(m.project, m.get_name())
         self.assertEquals(m.modc.project, m.modc.get_name())
 
-        m = modpack(dict(
+        m = ModPack(dict(
             project='foo',
             modc_project='bar',
             ))

@@ -44,5 +44,3 @@ class Template(Soppa):
         result.modified = True if delta else False
         dlog.add(bucket='files', name=self.parent.get_name(), data=result.__dict__)
         return result
-
-template_task, template = register(Template)

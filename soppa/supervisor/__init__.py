@@ -60,5 +60,3 @@ class Supervisor(Soppa):
     def check(self):
         result = self.sudo("supervisorctl {supervisor_opt} status")
 
-
-supervisor_task, supervisor = register(Supervisor)

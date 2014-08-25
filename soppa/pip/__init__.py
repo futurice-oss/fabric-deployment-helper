@@ -130,5 +130,3 @@ class Pip(Soppa):
     def system_package_path(self, name):
         rs = self.sudo("python -c 'import {0}; import os; print os.path.dirname({1}.__file__)'".format(name, name))
         return os.path.normpath(unicode(rs).strip()) + os.sep
-
-pip_task, pip = register(Pip)

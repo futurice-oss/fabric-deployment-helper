@@ -6,4 +6,3 @@ class ModA(Soppa):
     var = 'moda'
     def setup(self):
         return 1
-moda = ModA

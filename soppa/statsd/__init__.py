@@ -23,5 +23,3 @@ class StatsD(Soppa):
     def stats(self):
         """ stats|counters|timers """
         self.sudo('echo "stats" | nc -w1 localhost 8126')
-
-statsd_task, statsd = register(StatsD)

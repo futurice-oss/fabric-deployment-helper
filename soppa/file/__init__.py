@@ -53,4 +53,3 @@ class File(Soppa):
         tf.flush()
         return tf
 
-file_task, file = register(File)

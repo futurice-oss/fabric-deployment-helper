@@ -8,4 +8,3 @@ class ModC(ModParent):
     var = 'modc'
     def voodoo(self):
         return False
-modc = ModC

@@ -41,5 +41,3 @@ class Java(Soppa):
         pass
         # update-alternatives --config java
         # java -version
-
-java_task, java = register(Java)

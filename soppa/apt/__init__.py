@@ -21,4 +21,3 @@ class Apt(Soppa):
         pass
     #/TODO
 
-apt_task, apt = register(Apt)

@@ -76,5 +76,3 @@ class Django(Soppa):
             options=db.get('OPTIONS', {}),
         )
         return rs
-
-django_task, django = register(Django)

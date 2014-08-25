@@ -40,5 +40,3 @@ class Package(Soppa):
         pkg = url.split(by)[-1]
         pkg = pkg.split('.')[0]
         return pkg
-
-package_task, package = register(Package)

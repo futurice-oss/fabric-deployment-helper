@@ -52,5 +52,3 @@ class Graphite(Soppa):
         self.sudo("ln -s {0} {1}".format(cairo_path.rstrip('/'), pkg_path.rstrip('/')))
 
         self.sudo('update-rc.d -f carbon remove')#TODO: generalize as OS.init_remove('carbon')
-
-graphite_task, graphite = register(Graphite)

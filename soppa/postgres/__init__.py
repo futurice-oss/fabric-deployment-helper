@@ -30,5 +30,3 @@ class Postgres(Soppa):
         with settings(warn_only=True):
             self.sudo("su - postgres -c 'createuser {postgres_user} --no-superuser --no-createdb --no-createrole'")
             self.sudo("su - postgres -c 'createdb {postgres_name} -O {postgres_user}'")
-
-postgres_task, postgres = register(Postgres)

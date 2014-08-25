@@ -18,5 +18,3 @@ class ElasticSearch(Soppa):
         # http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/_cluster_health.html
         f=1
         #/_cat/health?v
-
-elasticsearch_task, elasticsearch = register(ElasticSearch)

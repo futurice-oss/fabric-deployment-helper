@@ -30,13 +30,14 @@ c.packmans = [
     'soppa.internal.packagehandler.PipVenv',
     'soppa.internal.packagehandler.Apt']
 
+DEFAULT_NS = 'soppa'
+
 @task
 def soppa_start():
-    print "Soppa: Start"
+    pass
 
 @task
 def soppa_end():
-    print "Soppa: End"
     from soppa.internal.logs import dlog
     # TODO: save to a file on remote machine
     pp(dlog.data)

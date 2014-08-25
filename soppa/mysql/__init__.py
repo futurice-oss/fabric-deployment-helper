@@ -38,5 +38,3 @@ class Mysql(Soppa):
                 cmd=mysql_cmd,
                 database=db)
         return self.sudo(shcmd)
-
-mysql_task, mysql = register(Mysql)

@@ -13,5 +13,3 @@ class Jinja(Soppa):
             ])
         environ = jinja2.Environment(loader=loader, undefined=jinja2.StrictUndefined)
         return environ.get_template(path)
-
-jinja_task, jinja = register(Jinja)

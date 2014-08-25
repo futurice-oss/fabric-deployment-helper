@@ -22,5 +22,3 @@ class Redis(Soppa):
         if self.operating.is_linux():
             self.file.set_setting('/etc/apt/sources.list', 'deb http://packages.dotdeb.org wheezy all')
             self.file.set_setting('/etc/apt/sources.list', 'deb-src http://packages.dotdeb.org wheezy all')
-
-redis_task, redis = register(Redis)

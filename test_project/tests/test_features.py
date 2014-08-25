@@ -5,18 +5,13 @@ from soppa.internal.ingredients import *
 from soppa.internal.tools import ObjectDict, Upload, generate_config
 from soppa.internal.runner.default import Runner
 
-# failures, if not importing ahead. Why?
-from soppa.internal.packagehandler import Pip
-from soppa.operating import operating
-# /why
-
-from ..moda import moda
-from ..modb import modb
-from ..modc import modc
-from ..modd import modd
-from ..mode import mode
-from ..modf import modf
-from ..modpack import modpack
+from ..moda import ModA
+from ..modb import ModB
+from ..modc import ModC
+from ..modd import ModD
+from ..mode import ModE
+from ..modf import ModF
+from ..modpack import ModPack
 
 class BaseSuite(unittest.TestCase):
     pass
@@ -67,29 +62,29 @@ class SoppaTest(BaseSuite):
         env = self.base
 
     def test_log_changes(self):
-        m = modpack()
+        m = ModPack()
         self.assertFalse(m.isDirty())
         dlog.add('files', m.get_name(), {'diff':'!','source':'foo','target':'bar'})
         self.assertTrue(m.isDirty())
 
     def test_packages_possibilities(self):
-        m = modpack()
+        m = ModPack()
         self.assertTrue(m.packman().unique_handlers())
 
     def test_kwargs_do_not_overwrite_needs(self):
-        p = pip(ctx={'virtualenv':{}})
+        p = Pip(ctx={'virtualenv':{}})
         self.assertTrue(p.has_need('virtualenv'))
         self.assertTrue(p.virtualenv != {})
 
-        p = pip(dict(virtualenv_local_conf_path='/tmp/'))
+        p = Pip(dict(virtualenv_local_conf_path='/tmp/'))
         self.assertEquals(p.virtualenv.local_conf_path, '/tmp/')
-        v = virtualenv()
+        v = Virtualenv()
         with self.assertRaises(AttributeError):
             v.local_conf_path
 
     def test_variable_namespacing(self):
         ctx = {'host': 'localhost.here'}
-        i = graphite(ctx=ctx)
+        i = Graphite(ctx=ctx)
         self.assertEquals(i.host, ctx['host'])
 
     def test_mlcd(self):
@@ -101,8 +96,8 @@ class SoppaTest(BaseSuite):
             self.assertEquals(os.getcwd(), os.path.normpath(os.path.join(there, '../../soppa/supervisor/')))
 
     def test_scoped_env(self):
-        p = pip()
-        v = virtualenv()
+        p = Pip()
+        v = Virtualenv()
         v.virtualenv_active = True
         self.assertEquals(p.fmt('{virtualenv.virtualenv_active}'), str(v.virtualenv_active))
         self.assertTrue(p.virtualenv.virtualenv_active)
@@ -112,7 +107,7 @@ class SoppaTest(BaseSuite):
         self.assertTrue(v.pip.packages_to)
 
     def test_formatting(self):
-        m = modpack()
+        m = ModPack()
         with self.assertRaises(KeyError):
             self.assertEquals(m.fmt('{foo}{bar}'), '{foo}{bar}')
         ctx = {'foo':'FOO'}
@@ -133,25 +128,25 @@ class SoppaTest(BaseSuite):
         c = {'foo': ObjectDict({'bar': 'oh.oh'})}
         self.assertEquals(m.fmt('{foo.bar}', **c), 'oh.oh')
 
-        u = Upload('config/statsd_supervisor.conf', '{packages_from}', instance=pip(), caller_path='/tmp/')
+        u = Upload('config/statsd_supervisor.conf', '{packages_from}', instance=Pip(), caller_path='/tmp/')
         self.assertTrue(all('{' not in k for k in u.args))
 
         s = 'mkdir -p {basepath}{packages,releases,media,static,dist,logs,config/vassals/,pids,cdn}'
         self.assertTrue('/x/' in m.fmt(s, **dict(basepath='/x/')))
 
     def test_formatting_bash(self):
-        m = modpack()
+        m = ModPack()
         ctx = {'foo': 'FOO'}
         self.assertEquals(m.fmt('{foo} {"print $2"}', **ctx), 'FOO {"print $2"}')
         self.assertEquals(m.fmt('{foo}', **ctx), 'FOO')
 
     def test_formatting_invalid_string(self):
-        m = modpack()
+        m = ModPack()
         s = """'ifconfig -a eth1|grep "inet addr"|awk '{gsub("addr:","",$2); print $2}'"""
         self.assertEquals(m.fmt(s), s)
 
     def test_formatting_fun(self):
-        m = modpack()
+        m = ModPack()
         def lalafun(kw):
             rs = 100
             return rs
@@ -164,7 +159,7 @@ class SoppaTest(BaseSuite):
     def test_set_setting(self):
         env.local_deployment = True
         start_str = """hello world\nhawai\n"""
-        ff = file({})
+        ff = File({})
         f = ff.tmpfile(start_str)
         f.seek(0)
         ff.set_setting(f.name, 'foobar', su=False)
@@ -178,9 +173,9 @@ class SoppaTest(BaseSuite):
         self.assertEquals(template.determine_target_filename('/1/foo.txt', '/tmp'), '/tmp')
 
     def test_config_gathering(self):
-        m = modpack()
+        m = ModPack()
         self.assertEquals(generate_config(m, include_cls=[ReleaseMixin])['project'], m.project)
-        m = modpack(project='custom-name')
+        m = ModPack(project='custom-name')
         self.assertEquals(generate_config(m, include_cls=[ReleaseMixin])['project'], m.project)
 
 def overwrite(f, data):
@@ -190,7 +185,7 @@ def overwrite(f, data):
 
 class PatchTest(BaseSuite):
     def test_env_function(self):
-        m = modpack()
+        m = ModPack()
         def _(kw={}):
             return 100
         with self.assertRaises(AssertionError):
@@ -199,32 +194,32 @@ class PatchTest(BaseSuite):
 class ModuleTest(BaseSuite):
 
     def test_package(self):
-        self.assertEquals(modpack({}).dummy('John'), 'John')
+        self.assertEquals(ModPack({}).dummy('John'), 'John')
 
     def test_module_packages(self):
-        ma = moda(dict(project='name_moda', modb_project='name_modb_override'))
-        mb = modb(dict(project='name_modb'))
+        ma = ModA(dict(project='name_moda', modb_project='name_modb_override'))
+        mb = ModB(dict(project='name_modb'))
         ma.setup()
         self.assertNotEqual(ma.version, mb.version)
         self.assertEquals(ma.project, 'name_moda')
         self.assertEquals(mb.project, 'name_modb')
         self.assertEquals(ma.modb.project, 'name_modb_override')
-        ma = moda({'project': 'king'})
+        ma = ModA({'project': 'king'})
         self.assertEquals(ma.project, 'king')
 
     def test_module_contains_variables_from_dependent_modules(self):
-        ma = moda()
+        ma = ModA()
         self.assertEquals(ma.var, 'moda')
         self.assertEquals(ma.modb.var, 'modb')
         with self.assertRaises(AttributeError):
-            ma.modc.var
+            ma.ModC.var
 
     def test_module_var_mutability(self):
-        md = modd()
+        md = ModD()
         self.assertNotEquals(md.something, md.modf.something)
-        md = modd({'something': 3})
+        md = ModD({'something': 3})
         self.assertEquals(md.something, md.modf.something)
-        md = modd({'modd_something': 3})
+        md = ModD({'modd_something': 3})
         self.assertNotEquals(md.something, md.modf.something)
         self.assertTrue(md.something == md.modd_something == 3)
 
@@ -233,48 +228,48 @@ class ModuleTest(BaseSuite):
         child_foo -> self.child.foo/child_foo
         self_child_foo -> self.child.foo/child_foo
         """
-        md = modd()
+        md = ModD()
         self.assertEquals(md.modf.modf_shout, 'hello')
         self.assertEquals(md.modf.shout, 'hello')
-        md = modd(dict(modf_shout='hello'))
+        md = ModD(dict(modf_shout='hello'))
         self.assertEquals(md.modf.modf_shout, 'hello')
         self.assertEquals(md.modf.shout, 'hello')
 
-        md = modd(dict(modd_modf_shout='woof'))
+        md = ModD(dict(modd_modf_shout='woof'))
         self.assertEquals(md.modf.modf_shout, 'woof')
         self.assertEquals(md.modf.shout, 'woof')
-        md = modd(dict(modf_shout='bark', modd_modf_shout='woof'))
+        md = ModD(dict(modf_shout='bark', modd_modf_shout='woof'))
         self.assertEquals(md.modf.modf_shout, 'woof')
         self.assertEquals(md.modf.shout, 'woof')
-        md = modd(dict(modd_modf_shout='woof', modf_shout='bark'))
+        md = ModD(dict(modd_modf_shout='woof', modf_shout='bark'))
         self.assertEquals(md.modf.modf_shout, 'woof')
         self.assertEquals(md.modf.shout, 'woof')
 
-        md = modd(dict(modd_modf_shout='hello'))
+        md = ModD(dict(modd_modf_shout='hello'))
         self.assertEquals(md.modf.shout, 'hello')
 
         config = dict(
                 modd_modf_shout='hello',
                 mode_modf_shout='bye',
                 some_global='global',)
-        md = modd(config)
-        me = mode(config)
+        md = ModD(config)
+        me = ModE(config)
         self.assertEquals(md.modf.shout, 'hello')
         self.assertEquals(me.modf.shout, 'bye')
         self.assertEquals(me.modf.some_global, 'global')
 
-        mf = modf(dict(modf_shout='omg'))
+        mf = ModF(dict(modf_shout='omg'))
         self.assertEquals(mf.shout, 'omg')
         self.assertEquals(mf.modf_shout, 'omg')
 
     def test_waterfall_with_globals(self):
-        md = modd(dict(shout='uh oh',not_in_modf=True))
+        md = ModD(dict(shout='uh oh',not_in_modf=True))
         self.assertNotEquals(md.modf.shout, 'uh oh')# not namespaced, no override
         self.assertEquals(md.modf.not_in_modf, True)# global, passed on
 
     def test_up(self):
         from soppa.internal.tools import Upload
-        md = modd()
+        md = ModD()
         caller_path = here(instance=md)
         upload = Upload('/tmp/a', '/tmp/{self.modf.shout}', instance=md, caller_path=caller_path)
         upload = Upload('/tmp/a', '/tmp/{self.modf}', instance=md, caller_path=caller_path)
@@ -282,14 +277,14 @@ class ModuleTest(BaseSuite):
 
 class WaterTest(BaseSuite):
     def test_settings_layers(self):
-        i = modc({'modc_hello': 'world', 'external': 'ok'})
+        i = ModC({'modc_hello': 'world', 'external': 'ok'})
         self.assertEqual(i.modc_left, 'left')
         self.assertEqual(i.modc_hello, 'world')
         self.assertEqual(i.external, 'ok')
 
-        i = modc(ctx={'modc_hello': 'world', 'modc_left': 'right'})
+        i = ModC(ctx={'modc_hello': 'world', 'modc_left': 'right'})
         self.assertEqual(i.modc_left, 'right')
         self.assertEqual(i.modc_hello, 'world')
 
-        i = modc(dict(modc_left='up'))
+        i = ModC(dict(modc_left='up'))
         self.assertEqual(i.modc_left, 'up')

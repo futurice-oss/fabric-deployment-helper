@@ -53,5 +53,3 @@ class Nginx(Soppa):
     @with_settings(warn_only=True)
     def stop(self):
         self.sudo('/etc/init.d/nginx stop')
-
-nginx_task, nginx = register(Nginx)
