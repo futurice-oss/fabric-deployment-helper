@@ -7,7 +7,7 @@ cd $MY
 ./configure \
 --with-cc-opt="-Wno-deprecated-declarations" \
 --with-http_ssl_module \
---prefix={{nginx_dir}}
+--prefix={{nginx_path}}
 make -j2
 
 if [ "$(uname)" == "Darwin" ]; then

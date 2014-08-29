@@ -1,17 +1,12 @@
 from soppa.contrib import *
 
 class Redis(Soppa):
-    needs=[
-        'soppa.file',
-        'soppa.operating',
-        'soppa.linux'
-    ]
 
     def setup(self):
         if self.operating.is_linux():
             if self.linux.binary_exists('redis-server'):
                 return
-            sources()
+            self.sources()
             if not self.exists('/etc/apt/preferences.d/redis-server-dotdeb-pin-400'):
                 with self.mlcd('config/'):
                     uptpl('redis-server-dotdeb-pin-400', '/etc/apt/preferences.d/')

@@ -1,10 +1,8 @@
 from soppa.contrib import *
 
 class Linux(Soppa):
-    needs=[
-        'soppa.file',
-        'soppa.remote',
-    ]
+    def setup(self):
+        self.remote.setup()
 
     def swap_on(self):
         self.remote.run_cmd('soppa.linux.swap')

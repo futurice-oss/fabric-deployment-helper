@@ -10,22 +10,9 @@ class Graphite(Soppa):
     host = 'localhost'
     carbon_path = '{path}'
 
-    needs = Soppa.needs+[
-        'soppa.template',
-        'soppa.nodejs',
-        'soppa.statsd',
-
-        'soppa.apt',
-        'soppa.pip',
-
-        'soppa.virtualenv',
-        'soppa.supervisor',
-        'soppa.redis',
-        'soppa.remote',
-    ]
-    need_web = 'soppa.nginx'
-
     def setup(self):
+        self.virtualenv.setup()
+
         self.sudo('mkdir -p {path}')
         self.sudo('chown -R {deploy_user} {path}')
 
@@ -36,10 +23,6 @@ class Graphite(Soppa):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
         self.up('local_settings.py', '{pathweb}')
         self.sudo('chown {deploy_user} {pathweb}local_settings.py')
-
-        self.action('up', 'graphite_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
-        if self.has_need('nginx'):
-            self.action('up', 'graphite_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
 
         with self.virtualenv.activate(), self.cd('{pathweb}'):
             self.sudo('python manage.py syncdb --noinput')
@@ -52,3 +35,9 @@ class Graphite(Soppa):
         self.sudo("ln -s {0} {1}".format(cairo_path.rstrip('/'), pkg_path.rstrip('/')))
 
         self.sudo('update-rc.d -f carbon remove')#TODO: generalize as OS.init_remove('carbon')
+
+    def configure_nginx(self):
+        self.action('up', 'graphite_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
+
+    def configure_supervisor(self):
+        self.action('up', 'graphite_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])

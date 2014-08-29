@@ -1,17 +1,12 @@
 from soppa.contrib import *
 
 class Nginx(Soppa):
-    nginx_dir = '/srv/nginx/'
-    nginx_user = 'www-data'
-    nginx_group = 'www-data'
-    nginx_restart_command = '/etc/init.d/nginx restart'
-    nginx_start_command = '/etc/init.d/nginx start'
-    nginx_conf_dir = '{nginx_dir}conf/sites-enabled/'
-    needs = [
-        'soppa.file',
-        'soppa.operating',
-        'soppa.template',
-    ]
+    path = '/srv/nginx/'
+    user = 'www-data'
+    group = 'www-data'
+    restart_command = '/etc/init.d/nginx restart'
+    start_command = '/etc/init.d/nginx start'
+    conf_dir = '{path}conf/sites-enabled/'
 
     def setup(self):
         self.sudo('mkdir -p {nginx_conf_dir}')
@@ -26,17 +21,17 @@ class Nginx(Soppa):
             self.sudo('chmod 0640 /Library/LaunchDaemons/nginx.plist')
             self.sudo('launchctl load /Library/LaunchDaemons/nginx.plist')
             
-        if not self.exists('{nginx_dir}conf/mime.types'):
-            self.sudo('cp {nginx_dir}conf/mime.types.default {nginx_dir}conf/mime.types')
+        if not self.exists('{path}conf/mime.types'):
+            self.sudo('cp {path}conf/mime.types.default {path}conf/mime.types')
 
-        if not self.exists('{nginx_dir}sbin/nginx'):
+        if not self.exists('{path}sbin/nginx'):
             self.up('nginx.bash', '/usr/src/')
             with self.cd('/usr/src/'):
                 if self.operating.is_osx():
                     self.sudo('brew install pcre')
                 self.sudo('bash nginx.bash')
 
-        self.action('up', 'nginx.conf', '{nginx_dir}conf/', handler=['nginx.restart'])
+        self.action('up', 'nginx.conf', '{path}conf/', handler=['nginx.restart'])
 
     @with_settings(warn_only=True)
     def restart(self):

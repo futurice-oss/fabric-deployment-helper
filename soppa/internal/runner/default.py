@@ -8,86 +8,11 @@ from soppa.internal.mixins import NeedMixin, ApiMixin, FormatMixin, ReleaseMixin
 from soppa.internal.tools import import_string, generate_config
 from soppa.internal.logs import dlog
 
-class RunnerReleaseMixin(ApiMixin, FormatMixin, NeedMixin):
-    """
-    A deployment model for projects.
-    Example:
-    /www # www_root
-    /www/project/ # basepath
-    /www/project/www/ # path
-    /www/project/releases/X/ # release_path
-    www -> releases/X # <symlink>
-    """
-    needs = ['soppa.operating',]
-
-    @property
-    def release_path(self):
-        if not hasattr(self, 'time'):
-            self.time = time.strftime('%Y%m%d%H%M%S')
-        return self.fmt('{basepath}releases/{time}/')
-
-    def ownership(self, owner=None):
-        owner = owner or self.deploy_user
-        self.sudo('chown -fR {owner} {basepath}', owner=owner)
-
-    def dirs(self):
-        self.sudo('mkdir -p {www_root}dist/')
-        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
-        self.run('mkdir -p {}'.format(self.release_path))
-        if not self.exists(self.path):
-            with self.cd(self.basepath):
-                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
-
-    def symlink(self):
-        """ mv is atomic op on unix; allows seamless deploy """
-        with self.cd(self.basepath):
-            if self.operating.is_linux():
-                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path.rstrip('/')))
-            else:
-                self.run('rm -f www && ln -sf {} www'.format(self.release_path.rstrip('/')))
-
-    def copy_path_files_to_release_path(self):
-        """
-        Files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
-        """
-        for name,data in dlog.data['hosts'][env.host_string].iteritems():
-            for key in data.keys():
-                for k, action in enumerate(data[key]):
-                    target = action.get('target')
-                    if target:
-                        if self.path in target:
-                            release_target = target.replace(self.path, self.release_path)
-                            reldir = os.path.dirname(release_target)
-                            self.run('mkdir -p {}; cp {} {}'.format(reldir, target, release_target))
-
-    def setup_need(self, instance):
-        """ Ensures module.setup() is run only once per-host """
-        key_name = '{0}.setup'.format(instance.get_name())
-        if self.is_performed(key_name):
-            return
-        getattr(instance, 'setup')()
-        self.set_performed(key_name)
-
-    def is_performed(self, fn):
-        env.performed.setdefault(env.host_string, {})
-        env.performed[env.host_string].setdefault(fn, False)
-        return env.performed[env.host_string][fn]
-
-    def set_performed(self, fn):
-        self.is_performed(fn)
-        env.performed[env.host_string][fn] = True
-
-    def id(self, url):
-        return hashlib.md5(url).hexdigest()
 
 class Runner(NeedMixin):
     """
     A Runner allows more control over deployments, by acting as a wrapper around the deployment life-cycle.
     """
-    needs = ['soppa.operating',
-            'soppa.remote',
-            'soppa.git',]
-    release_cls = RunnerReleaseMixin
     def __init__(self, config={}, hosts={}, roles={}, recipe={}, *args, **kwargs):
         super(Runner, self).__init__(*args, **kwargs)
         self.config = config
@@ -106,17 +31,6 @@ class Runner(NeedMixin):
                 modules.append(NeedMixin().load(m))
             self._modules = modules
         return self._modules
-
-    def get_release(self, module):
-        key = 'release_{}'.format(module.get_name())
-        data = self._CACHE.get(key)
-        if not data:
-            data = self.release_cls()
-            config = self.get_module_config(module)
-            for k,v in config.iteritems():
-                setattr(data, k, v)
-            self._CACHE[key] = data
-        return data
 
     def get_module_config(self, module):
         key = 'module_config_{}'.format(module.get_name())
@@ -178,7 +92,6 @@ class Runner(NeedMixin):
         config.update(role_config)
         config.update(self.hosts.get(env.host_string, {}))
 
-        needs_all = set()
         module_classes = self.get_module_classes()
 
         # instantiate with configuration
@@ -190,43 +103,31 @@ class Runner(NeedMixin):
             print "Nothing to do, exiting."
             return
 
+        # copy configuration
+        isnew = []
+        for module in modules:
+            needs = module.get_needs()
+            isnew.append(self.configure(needs))
+            isnew.append(self.configure([module]))
+        if any(isnew):
+            raise Exception("""NOTICE: Default Configuration generated into {}.
+            Review settings and configure any changes. Next run is live""".format('$local_conf_path'))
+
         self.ask_sudo_password(modules[0], capture=False)
         
-        # configure, prepare dependent modules
         for module in modules:
-            release = self.get_release(module)
+            module.pre_setup()
 
-            needs = module.get_needs()
-            for need in needs:
-                needs_all.add(need)
+        # run deferred handlers
+        #self.packages()
+        #self.run_deferred('packages')
 
-            if release.project:
-                release.dirs()
-            release.ownership()
-
-            # configure everything
-            self.configure(needs)
-
-            # setup everything, except self
-            for need in needs:
-                release.setup_need(need)
-
-        # configure self (modules)
-        for module in modules:
-            self.configure([module])
-            self.packages(module)
-
-        # setup self (modules)
         for module in modules:
             module.setup()
+            module.post_setup()
 
-        # symlink self (modules)
-        for module in modules:
-            release = self.get_release(module)
-            release.copy_path_files_to_release_path()
-            release.symlink()
-
-        self.restart(needs_all)
+        # run deferred handlers
+        self.restart()
 
     def configure(self, needs):
         """ Prepare pre-requisitives a module has, before it can be setup """
@@ -234,34 +135,18 @@ class Runner(NeedMixin):
         for need in needs:
             if not os.path.exists(os.path.join(need.soppa.local_conf_path)):
                 newProject = True
-            need.configure()
             need.copy_configuration()
-
-        if newProject:
-            raise Exception("""NOTICE: Default Configuration generated into {}.
-            Review settings and configure any changes. Next run is live""".format('$local_conf_path'))
-
-    def packages(self, module):
-        """ Package handling bundled between all modules, executed once per server.
-        - Runner needs packages instances
-        """
-        pm = module.packman()
-        packages = pm.get_packages()
-        pm.write_packages(packages)
-        pm.download_packages(packages)
-        pm.sync_packages(packages)
-        pm.install_packages(packages)
+        return newProject
 
     def ask_sudo_password(self, module, capture=False):
         if module.env.get('password') is None:
             print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
             module.env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
 
-    def restart(self, needs):
+    def restart(self):
         for k,v in dlog.data['hosts'][env.host_string].iteritems():
             if k == 'all':
                 # TODO: group, could be multiple changed files per module
                 for deferred in v.get('defer'):
                     if deferred['modified']:
                         deferred['instance']()
-                        #instance.restart()

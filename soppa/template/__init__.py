@@ -3,9 +3,6 @@ import copy
 from soppa.contrib import *
 
 class Template(Soppa):
-    needs = Soppa.needs+[
-        'soppa.file',
-        'soppa.jinja',]
 
     def determine_target_filename(self, a, b):
         af = a.split('/')[-1]

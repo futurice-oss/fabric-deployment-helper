@@ -5,10 +5,6 @@ class Postgres(Soppa):
     name = '{project}'
     user = ''
     password = ''
-    needs = [
-        'soppa.operating',
-        'soppa.template',
-    ]
 
     def setup(self):
         if self.operating.is_linux():

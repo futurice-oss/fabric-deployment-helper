@@ -31,8 +31,9 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
 
         # Apply all inherited variables to have them in __dict__ scope
         # - allows to format dynamic variables -- fmt() -- instance variables in __init__
-        def apply_vars(values):
-            cur_values = self.__dict__
+        applied = {}
+        def apply_vars(values, cur_values):
+            r = {}
             for k,v in values.iteritems():
                 if not k.startswith('__') \
                         and not callable(v) \
@@ -42,8 +43,15 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
                     cur_instance_value = getattr(self, k)
                     if not cur_dict_value and not callable(cur_instance_value):
                         setattr(self, k, v)
-        apply_vars(self.__class__.__dict__)
-        apply_vars(get_full_dict(self))
+                        r[k] = v
+            return r
+        def cur_values(c):
+            r = {}
+            r.update(self.__dict__)
+            r.update(c)
+            return r
+        applied.update(apply_vars(self.__class__.__dict__, cur_values=cur_values(applied)))
+        applied.update(apply_vars(get_full_dict(self), cur_values=cur_values(applied)))
 
         self.env = env # fabric
         self.soppa = SOPPA_DEFAULTS
@@ -56,9 +64,10 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         if any([key in self.reserved_keys for key in context.keys()]):
             raise Exception("Reserved keys used")
 
-        # set initial state based on context, ensuring not overriding needs[]
+        # set initial state based on context
         for k,v in context.iteritems():
-            if not self.has_need(k) and k not in [self.get_name()]:
+            #if not self.has_need(k) and k not in [self.get_name()]:
+            if k not in [self.get_name()]:
                 setattr(self, k, v)
 
         namespaced_values = get_namespaced_class_values(self)
@@ -83,6 +92,12 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             if k not in keys:
                 setattr(self, k, v)
 
+    def is_deferred(self, handler):
+        for rule in self.defer_handlers:
+            if handler.endswith(rule) or rule=='*':
+                return True
+        return False
+
     def action(self, name, *args, **kwargs):
         """
         Action allows wrapping commands into a context that oversees the method flow
@@ -93,18 +108,18 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         given = kwargs.pop('given', None)
         if given and not given(self):
             # TODO: log.debug()
-            dlog.add('skipped', 'given', [name, args, kwargs])
+            rs = {}
+            rs['instance'] = method
+            rs['method'] = method
+            rs['handler'] = '{}.{}'.format(self.get_name(), name)
+            rs['modified'] = False
+            dlog.add('defer', 'all', rs)
             return
         handlers = kwargs.pop('handler', [])
         for handler in handlers:
             if isinstance(handler, list):
                 print "HANDLE-pre",handler
         result = method(*args, **kwargs)
-        def is_deferred(instance, handler):
-            for rule in instance.defer_handlers:
-                if handler.endswith(rule) or rule=='*':
-                    return True
-            return False
 
         def is_dirty(result):
             return result.modified
@@ -113,7 +128,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             handler_instance = self.get_handler(handler)
             if isinstance(handler_instance, basestring):
                 raise Exception("Class variable collision for handler {}; namespacing issue?".format(handler))
-            if is_deferred(self, handler):
+            if self.is_deferred(handler):
                 rs = result.__dict__
                 rs['instance'] = handler_instance
                 rs['handler'] = handler
@@ -135,18 +150,6 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         else:
             instance = getattr(self, module)
         return getattr(instance, method)
-
-    @property
-    def vcs(self):
-        if not hasattr(self, '_vcs_proxy'):
-            self._vcs_proxy = self._load_need(self.need_vcs, alias='vcs', ctx={'args':self.args,'kwargs':self.kwargs})
-        return self._vcs_proxy
-
-    @property
-    def web(self):
-        if not hasattr(self, '_web_proxy'):
-            self._web_proxy = self._load_need(self.need_web, alias='web', ctx={'args':self.args,'kwargs':self.kwargs})
-        return self._web_proxy
 
     def isDirty(self):
         dirty = False
@@ -208,6 +211,12 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             self.soppa.local_conf_path,
             self.get_name(),
             '')
+
+    def pre_setup(self):
+        return {}
+
+    def post_setup(self):
+        return {}
 
     def setup(self):
         return {}

@@ -4,7 +4,6 @@ from pprint import pprint as pp
 
 from fabric.api import env, task, execute
 from soppa.internal.tools import here, ObjectDict
-#from soppa.internal.logs import dlog
 
 # FABRIC
 env.use_ssh_config = True

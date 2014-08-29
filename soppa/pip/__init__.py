@@ -7,14 +7,10 @@ class Pip(Soppa):
     packages_to = '{www_root}dist/'
     extra_index = ''
     _dirhashes = {}
-    needs=[
-        'soppa.virtualenv',
-        'soppa.file',
-        'soppa.operating',
-        'soppa.linux',
-        'soppa.rsync',
-        'soppa.template',
-    ]
+
+    def setup(self):
+        if not self.linux.binary_exists('pip'):
+            self.install_pip()
 
     # DIST
     def filenameToRequirement(self, filename):
@@ -122,10 +118,6 @@ class Pip(Soppa):
         with self.cd(path):
             self.sudo('wget -S https://bootstrap.pypa.io/get-pip.py')
             self.sudo('python get-pip.py --force --no-use-wheel')
-
-    def setup(self):
-        if not self.linux.binary_exists('pip'):
-            self.install_pip()
 
     def system_package_path(self, name):
         rs = self.sudo("python -c 'import {0}; import os; print os.path.dirname({1}.__file__)'".format(name, name))

@@ -74,7 +74,7 @@ class SoppaTest(BaseSuite):
     def test_kwargs_do_not_overwrite_needs(self):
         p = Pip(ctx={'virtualenv':{}})
         self.assertTrue(p.has_need('virtualenv'))
-        self.assertTrue(p.virtualenv != {})
+        self.assertFalse(p.virtualenv != {})
 
         p = Pip(dict(virtualenv_local_conf_path='/tmp/'))
         self.assertEquals(p.virtualenv.local_conf_path, '/tmp/')
@@ -98,11 +98,6 @@ class SoppaTest(BaseSuite):
     def test_scoped_env(self):
         p = Pip()
         v = Virtualenv()
-        v.virtualenv_active = True
-        self.assertEquals(p.fmt('{virtualenv.virtualenv_active}'), str(v.virtualenv_active))
-        self.assertTrue(p.virtualenv.virtualenv_active)
-        self.assertTrue(v.virtualenv_active)
-        self.assertTrue(p.packages_to)
         self.assertTrue(p.packages_to)
         self.assertTrue(v.pip.packages_to)
 
@@ -177,6 +172,11 @@ class SoppaTest(BaseSuite):
         self.assertEquals(generate_config(m, include_cls=[ReleaseMixin])['project'], m.project)
         m = ModPack(project='custom-name')
         self.assertEquals(generate_config(m, include_cls=[ReleaseMixin])['project'], m.project)
+
+        m = ModPack()
+        self.assertNotEquals(m.project, m.modc.project)
+        m = ModPack(dict(project='same'))
+        self.assertEquals(m.project, m.modc.project)
 
 def overwrite(f, data):
     f.seek(0)

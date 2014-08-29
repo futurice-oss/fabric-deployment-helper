@@ -9,10 +9,6 @@ class Java(Soppa):
     url = 'http://download.oracle.com/otn-pub/java/jdk/7u55-b13/jdk-7u55-linux-x64.tar.gz'
     pkg = "/opt/java.tar.gz"
     path = "/opt/java-oracle/"
-    needs = [
-        'soppa.file',
-        'soppa.operating',
-    ]
 
     def setup(self):
         self.sudo("mkdir -p {java_path}")

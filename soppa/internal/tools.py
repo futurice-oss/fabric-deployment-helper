@@ -123,7 +123,7 @@ def fmt_namespaced_values(obj, vals):
         namespaced_vals[k] = value
     return namespaced_vals
 
-def generate_config(module, include_cls=[], include_vars=[], exclude_vars=[]):
+def generate_config(module, include_cls=[], include_vars=[], exclude_vars=[], fmt=True):
     c = {}
     for k in include_cls:
         for key,val in get_class_dict(k).iteritems():
@@ -144,6 +144,8 @@ def generate_config(module, include_cls=[], include_vars=[], exclude_vars=[]):
             continue
         if '__' in k:
             continue
-        cf[k] = module.fmt(v)
+        if fmt:
+            v = module.fmt(v)
+        cf[k] = v
     return cf
 
