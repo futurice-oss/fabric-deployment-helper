@@ -2,89 +2,129 @@ import unittest, copy, os
 from pprint import pprint
 from StringIO import StringIO
 
-from soppa.ingredients import *
+from soppa.internal.ingredients import *
+from soppa.internal.runner.default import *
 
 env.password = ''
 env.mysql_password = os.environ.get('MYSQL_PASS', '')
+
+DEFAULT_ROLES = dict(
+all=dict(hosts=['vm']),
+)
 
 class BaseSuite(unittest.TestCase):
     pass
 
 class DjangoDeployTestCase(BaseSuite):
     def test_mysql(self):
-        ctx = dict(
-            name='db',
-            password=env.mysql_password,
+        config = dict(
+            mysql_name='db',
+            mysql_password=env.mysql_password,
+            deploy_user='root',
+            project='mysql',
         )
-        s = mysql(ctx=ctx)
-        s.setup()
+        roles = DEFAULT_ROLES
+        recipe = [
+            dict(roles='*', modules=['soppa.mysql']),
+        ]
+        Runner(config,{},roles,recipe).run()
 
     def test_django(self):
-        env.ctx['mysql'] = {
-            'password': env.mysql_password,
-        }
-        ctx = {
-            'project':'helloworld',
-        }
-        state = dict(
-                nginx=dict(restart='always'),
+        config = dict(
+            mysql_password=env.mysql_password,
+            nginx_restart='always',
+            project='helloworld',
+            deploy_user='root',
         )
-        r = Runner(state)
-        r.setup(django(ctx=ctx))
+        roles = DEFAULT_ROLES
+        recipe = [
+            dict(roles='*', modules=['soppa.django']),
+        ]
+        Runner(config,{},roles,recipe).run()
+
+    def test_graphite(self):
+        config = dict(
+            remote_user='root',
+            deploy_user='root',
+            project='graphite',
+            host='graphite.dev',
+        )
+        # roles settings: config, hosts
+        roles = dict(
+            webservers=dict(
+                config=dict(
+                    http_port=80,
+                    max_clients=200,
+                    remote_user='root',),
+                hosts=['vm',]),
+            dbservers=dict(
+                hosts='vm'),
+        )
+        # host -specific settings
+        hosts = dict(
+            host1=dict(max_clients=199),
+        )
+        # what to run in each host/role
+        recipe = [
+            dict(roles='*', modules=['soppa.graphite']),
+            dict(roles='webservers', modules=['soppa.nginx']),]
+        Runner(config, hosts, roles, recipe).run()
+
+class SingleTestCase(BaseSuite):
+    def test_grafana(self):
+        config=dict(
+            deploy_user='root',
+            project='grafana',
+            host='grafana.dev',
+        )
+        recipe = [dict(roles='*', modules=['soppa.grafana'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
+
+    def test_uwsgi(self):
+        config=dict(
+            project = 'uwsgitest',
+            deploy_user='root',
+        )
+        recipe = [dict(roles='*', modules=['soppa.uwsgi'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
 class DeployTestCase(BaseSuite):
     def test_hello(self):
         self.assertEquals(1,1)
 
     def test_statsd(self):
-        env.project='statsd'
-        r = Runner({})
-        r.setup(statsd(ctx={}))
-
-    def test_grafana(self):
-        ctx = dict(
-            project='grafana',
-            soppa_is='download'
+        config = dict(
+            project='statsd',
+            deploy_user='root',
         )
-        g = grafana(ctx=ctx)
-        g.setup()
+        recipe = [dict(roles='*', modules=['soppa.statsd'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
     def test_sentry(self):
-        env.project = 'sentry'
-        env.ctx = {
-            'sentry': {
-                'servername': 'sentry.dev',
-            },
-            'postgres': {
-                'name': 'sentry',
-                'user': 'sentry',
-                'pass': 'sentry',
-            }
-        }
-        r = Runner({})
-        r.setup(sentry())
-
-    def test_graphite(self):
-        env.project = 'graphite'
-        ctx = {
-            'project': 'graphite',
-            'host': 'graphite.dev',
-        }
-        instance = graphite(ctx=ctx)
-        instance.setup()
+        config = dict(
+            project='sentry',
+            deploy_user='root',
+            sentry_servername='sentry.dev',
+            postgres_name='sentry',
+            postgres_user='sentry',
+            postgres_password='sentry',
+        )
+        recipe = [dict(roles='*', modules=['soppa.sentry'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
     def test_nginx(self):
-        i = nginx()
-        i.setup()
+        config = dict(
+            deploy_user='root',
+        )
+        recipe = [dict(roles='*', modules=['soppa.nginx'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
     def test_supervisor(self):
-        i = supervisor()
-        i.setup()
-
-    def test_uwsgi(self):
-        env.project = 'uwsgitest'
-        i = uwsgi()
-        i.setup()
+        config = dict(
+            deploy_user='root',
+        )
+        recipe = [dict(roles='*', modules=['soppa.supervisor'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
 @task
 def run_deployment_tests():
@@ -94,10 +134,11 @@ def run_deployment_tests():
         map(unittest.makeSuite, [
             DjangoDeployTestCase,
             DeployTestCase,
+            SingleTestCase,
     ]))
     result = runner.run(alltests)
     print 'Tests run ', result.testsRun
-    print 'Errors ', result.errors
+    pprint(result.errors)
     pprint(result.failures)
     stream.seek(0)
     print 'Test output\n', stream.read()

@@ -1,44 +1,41 @@
 import os
+from contextlib import contextmanager
 
 from soppa.contrib import *
 
-from contextlib import contextmanager
-
-"""
-Setup for http://www.virtualenv.org/en/latest/
-"""
-
 class Virtualenv(Soppa):
-    path='{www_root}{project}/venv/'
-    version='virtualenv==1.11.4'
-    is_active = True
-    packages={
-        'pip': 'config/requirements.txt',
-    }
-    needs=[
+    """
+    Setup for http://www.virtualenv.org/en/latest/
+    """
+    virtualenv_path = '{root.basepath}venv/'
+    virtualenv_active = True
+    needs = Soppa.needs+[
         'soppa.pip',
     ]
 
     def setup(self):
-        self.pip.packages_as_local(packages=[self.version])
-        self.pip.install_package_global(self.version)
-
+        if self.root.project is None:
+            print "No project configured, skipping virtualenv setup"
+            return
         with settings(warn_only=True):
-            self.run('[ ! -d {path} ] && rm -rf {path} && '
+            self.run('[ ! -d {virtualenv_path} ] && rm -rf {virtualenv_path} && '
                  'virtualenv'
                  ' --extra-search-dir={pip.packages_to}'
-                 ' --prompt="({project})"'
-                 ' {path}'.format(**self.get_ctx()))
+                 ' --prompt="({root.project})"'
+                 ' {virtualenv_path}')
 
     def packages_path(self):
         with self.activate():
-            result = os.path.normpath(self.sudo("python -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'").strip()) + os.sep
+            rs = self.sudo("python -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'")
+            result = os.path.normpath(unicode(rs).strip()) + os.sep
         return result
 
     @contextmanager
     def activate(self):
-        if self.is_active:
-            with self.prefix('source {path}bin/activate'):
+        if not self.root.project:
+            raise Exception('Project name not defined')
+        if self.virtualenv_active:
+            with self.prefix('source {virtualenv_path}bin/activate'):
                 yield
         else:
             yield

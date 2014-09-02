@@ -5,38 +5,26 @@ class Postgres(Soppa):
     name='{project}'
     user=''
     password=''
-    packages={
-        'apt': [
-            'postgresql-9.1',
-            'libpq-dev'],
-    }
     needs=[
         'soppa.operating',
         'soppa.template',
     ]
-    with_python_packages = False
-    python_packages = ['psycopg2==2.5.2']
 
     def setup(self):
-        if self.with_python_packages:
-            self.packages['pip'] += self.python_packages
-
         if self.operating.is_linux():
             self.install()
-
-            self.rights()
+            self.create_database()
 
     def install(self):
-        with settings(warn_only=True):
+        with settings(warn_only=True), self.hide('warnings'):
             self.sudo('pg_createcluster 9.1 main --start')
-
-        self.up('pg_hba.conf', '{path}')
-        # TODO: if settings modified, need to restart server
 
         self.sudo('chmod +x /etc/init.d/postgresql')
         self.sudo('update-rc.d postgresql defaults')
 
-    def rights(self):
+        self.action('up', 'pg_hba.conf', '{postgres_path}', handler=['postgres.restart'])
+
+    def create_database(self):
         if not self.password or not self.user:
             raise Exception('Provide DATABASES settings')
         with settings(warn_only=True):

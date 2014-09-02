@@ -1,0 +1,6 @@
+libcairo2-dev
+python-cairo
+pkg-config
+libpng3
+libpng12-dev
+libffi-dev

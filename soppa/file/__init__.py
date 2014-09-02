@@ -1,9 +1,9 @@
 import os, sys, time, copy, re, logging
 import inspect, tempfile
+from dirtools import Dir
+import difflib
 
 from soppa.contrib import *
-
-from dirtools import Dir
 
 log = logging.getLogger('soppa')
 
@@ -11,13 +11,9 @@ class File(Soppa):
     def directory_hash(self, path):
         return Dir(path).hash()
 
-    def set_setting(self, filepath, text, ftype=None, backup=False, su=True):
-        """ add setting 'text' to 'filepath', if not there
-        - when setting bash files, add #START:cmdname ... #END:cmdname, so can reset these settings easily
-
-        if ftype specified, add bounding comments
-        - no need to match given text, can just get boundary, and rewrite all?
-        """
+    def set_setting(self, filepath, text, ftype=None, backup=False, su=True, user=None):
+        """ add setting 'text' to 'filepath', if not there """
+        user = user or self.deploy_user
         filepath = self.fmt(filepath)
         text = self.fmt(text)
         backup_file = filepath + '.bak'
@@ -25,7 +21,7 @@ class File(Soppa):
         call = self.sudo if su else self.run
         call("cp {0} {1}".format(filepath, backup_file))
         call("cp {0} {1}".format(filepath, tmp_file))
-        call('chown {0} {1}'.format(self.deploy_user, tmp_file))
+        call('chown {0} {1}'.format(user, tmp_file))
 
         with tempfile.NamedTemporaryFile(delete=True) as f:
             a = self.get_file(tmp_file, f)
@@ -40,18 +36,16 @@ class File(Soppa):
         if not backup:
             call('rm {0}'.format(backup_file))
 
-    def append_string_to_file(self, filepath, text):
-        with open(filepath, "a+") as f:
-            f.write(text + "\n")
+    def diff_remote_to_local(self, remote_file, local_file):
+        with self.hide('output','warnings'), settings(warn_only=True):
+            with tempfile.NamedTemporaryFile(delete=True) as f, open(local_file) as f2:
+                a = self.get_file(remote_file, f)
+                f.file.seek(0)
+                diff = difflib.ndiff(f.readlines(), f2.readlines())
+        return "".join(x for x in diff if x.startswith('- ') or x.startswith('+ ')).strip()
 
     def contains_text(self, haystack, needle):
         return (haystack.find(needle) <> -1)
-
-    def match_str_in_file(self, fname, text):
-        pat = re.compile(r"%s"%re.escape(text), re.MULTILINE)
-        with open(fname) as f:
-            res = f.read()
-        return (res.find(text) <> -1)
 
     def tmpfile(self, data, suffix=''):
         tf = tempfile.NamedTemporaryFile(suffix=suffix)

@@ -1,15 +1,9 @@
-import os
-
 from soppa.contrib import *
-from soppa.deploy import DeployFrame
 
-class SampleA(DeployFrame):
+class SampleA(Soppa):
     needs=['soppa.sampleb']
 
-    def hook_pre(self):
-        print "conf.projectA:",self.project
-
-    def pre(self):
-        print "setup.projectA:", self.project
+    def setup(self):
+        pass
 
 samplea_task, samplea = register(SampleA)

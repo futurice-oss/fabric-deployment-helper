@@ -25,17 +25,15 @@ class Dnsmasq(Soppa):
                 self.run('cp $(brew list dnsmasq | grep /dnsmasq.conf.example$) /usr/local/etc/dnsmasq.conf')
             if not self.exists('/Library/LaunchDaemons/homebrew.mxcl.dnsmasq.plist'):
                 self.sudo('cp $(brew list dnsmasq | grep /homebrew.mxcl.dnsmasq.plist$) /Library/LaunchDaemons/')
-        self.conf()
 
-    def conf():
         self.file.set_setting('/usr/local/etc/dnsmasq.conf', 'address=/.{dnsmasq_tld}/{dnsmasq_port}')
         self.sudo('mkdir -p /etc/resolver && touch /etc/resolver/{dnsmasq_tld}')
         self.file.set_setting('/etc/resolver/{dnsmasq_tld}', 'nameserver {dnsmasq_port}')
 
-    def start():
+    def startcmd():
         self.sudo('launchctl load /Library/LaunchDaemons/homebrew.mxcl.dnsmasq.plist')
 
-    def stop():
+    def stopcmd():
         self.sudo('launchctl unload /Library/LaunchDaemons/homebrew.mxcl.dnsmasq.plist')
 
 dnsmasq_task, dnsmasq = register(Dnsmasq)

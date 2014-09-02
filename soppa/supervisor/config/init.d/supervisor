@@ -21,8 +21,7 @@
 #                    subprocesses.
 ### END INIT INFO
 
-PATH={{virtualenv.path}}bin/:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-#DAEMON=virtualenv.path/bin/supervisord
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON_OPTS='-c /etc/supervisord.conf'
 DAEMON=/usr/local/bin/supervisord
 NAME=supervisord

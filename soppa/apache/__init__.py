@@ -13,6 +13,5 @@ class Apache(Soppa):
         if not linux.binary_exists('apache2'):
             self.sudo('apt-get install apache2-mpm-prefork')
         self.sudo('a2enmod proxy rewrite headers proxy_http')
-        self.conf()
 
 apache_task, apache = register(Apache)

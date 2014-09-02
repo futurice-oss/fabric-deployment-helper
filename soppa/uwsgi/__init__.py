@@ -1,35 +1,30 @@
 from soppa.contrib import *
 
-from soppa.deploy import DeployFrame
-
-class Uwsgi(DeployFrame):
-    processes=2
-    threads=2
-    wsgi='{project}.wsgi:application'
-    socket='127.0.0.1:5900'
-    stats='127.0.0.1:9191'
-    needs = DeployFrame.needs+[
+class Uwsgi(Soppa):
+    """
+    UWSGI is installed into a virtual environment, with configs going under parent, when isntalled as a need.
+    """
+    processes = 2
+    threads = 2
+    wsgi = '{root.project}.wsgi:application'
+    socket = '127.0.0.1:5900'
+    stats = '127.0.0.1:9191'
+    needs = Soppa.needs+[
+        'soppa.file',
+        'soppa.operating',
         'soppa.virtualenv',
         'soppa.linux',
         'soppa.template',
         'soppa.pip',
+        'soppa.apt',
     ]
-    packages={
-        'pip': ['uwsgi==2.0.4'],
-    }
+    project = 'uwsgi'
+    conf_dir = '{root.basepath}config/'
 
-    def setup_needs(self):
-        super(Uwsgi, self).setup_needs()
-        self.pip.update_packages(self.packages['pip'])
-
-    def hook_pre(self):
-        self.pip.update_packages()
-        self.sudo('mkdir -p {basepath}config/vassals')
-
-    def hook_post(self):
-        """ touch configs to reload, otherwise start uwsgi """
-        self.up('uwsgi.ini', '{basepath}config/vassals/')
-        self.sudo('chown -fR {deploy_user} {basepath}config/')
+    def setup(self):
+        self.sudo('mkdir -p {conf_dir}vassals/')
+        self.sudo('chown -fR {root.deploy_user} {root.basepath}config/')
+        self.action('up', 'uwsgi.ini', '{conf_dir}vassals/', handler=['uwsgi.restart'])
 
     def restart(self):
         if self.linux.running(r"ps auxww|grep uwsgi|grep [e]mperor"):
@@ -38,11 +33,11 @@ class Uwsgi(DeployFrame):
             self.cmd_start()
 
     def cmd_restart(self):
-        with self.cd('{basepath}config/vassals/'):
+        with self.cd('{conf_dir}vassals/'):
             self.sudo("find . -maxdepth 1 -mindepth 1 -type f -exec touch {} \+")
 
     def cmd_start(self):
-        with self.virtualenv.activate() as a:
-            self.sudo('uwsgi --emperor {basepath}config/vassals --uid {deploy_user} --gid {deploy_group} --daemonize {basepath}logs/{project}-emperor.log')
+        with self.virtualenv.activate():
+            self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.deploy_user} --gid {root.deploy_group} --daemonize {root.basepath}logs/{root.project}-emperor.log')
 
 uwsgi_task, uwsgi = register(Uwsgi)

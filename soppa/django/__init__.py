@@ -1,30 +1,26 @@
 from soppa.contrib import *
-from soppa.python import PythonDeploy
 
-class Django(PythonDeploy):
+class Django(Soppa):
     settings='{project}.settings.prod'
-    needs=PythonDeploy.needs+[
-        'soppa.file',
-        'soppa.uwsgi',
-        'soppa.nginx',
-        'soppa.mysql',
-        'soppa.nodejs',
+    needs=['soppa.file',
         'soppa.template',
-
+        'soppa.remote',
         'soppa.operating',
         'soppa.apt',
+
+        'soppa.nodejs',
+        'soppa.virtualenv',
+        'soppa.supervisor',
+        'soppa.redis',
+        'soppa.pip',
     ]
-    packages={
-        'pip': ['Django==1.6'],
-    }
     need_web = 'soppa.nginx'
     need_db = 'soppa.mysql'
     need_wsgi = 'soppa.uwsgi'
 
-    def hook_post_start(self):
-        self.install_all_packages()
-
     def hook_post(self):
+        self.set_dsm(self.settings)
+
         with settings(warn_only=True):# assumes assetgen
             self.prepare_assets()
 
@@ -34,19 +30,15 @@ class Django(PythonDeploy):
         with settings(warn_only=True):
             self.manage('migrate --noinput')# assumes South/django 1.7
 
-    def hook_end(self):
         self.check()
-
-    def hook_post_config(self):
-        self.set_dsm(self.settings)
 
     def set_dsm(self, dsm):
         self.file.set_setting(
-                self.fmt('{virtualenv.path}bin/activate'),
+                self.fmt('{virtualenv_path}bin/activate'),
                 self.fmt('export DJANGO_SETTINGS_MODULE={dsm}', dsm=dsm))
 
     def check(self):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
+        with self.virtualenv.activate(), self.cd(self.path):
             result = self.sudo('env|grep DJANGO_SETTINGS_MODULE')
             assert self.fmt(self.settings) in result
 
@@ -55,16 +47,16 @@ class Django(PythonDeploy):
         self.manage('syncdb --noinput')
 
     def prepare_assets(self):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
-            self.sudo('assetgen --profile prod assetgen.yaml --force && cp -r {usedir}static/* {basepath}static/')
+        with self.virtualenv.activate(), self.cd(self.path):
+            self.sudo('assetgen --profile prod assetgen.yaml --force && cp -r {path}static/* {basepath}static/')
         self.manage('collectstatic --noinput')
 
     def manage(self, args, standalone=False):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
+        with self.virtualenv.activate(), self.cd(self.path):
             return self.sudo('python manage.py {args}'.format(args=args))
 
     def admin(self, args, standalone=False):
-        with self.virtualenv.activate() as a, self.cd(self.usedir) as b:
+        with self.virtualenv.activate(), self.cd(self.path):
             return self.run('django-admin.py {args}'.format(args=args))
 
     def database_env(self, django_settings=None):

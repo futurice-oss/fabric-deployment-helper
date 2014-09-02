@@ -1,49 +1,51 @@
 from soppa.contrib import *
 
-from soppa.python import PythonDeploy
+class Graphite(Soppa):
+    """
+    Graphite by default installs to /opt/graphite/
+    Carbon configuration from: https://github.com/graphite-project/carbon/tree/master/conf
+    """
+    project = 'graphite'
+    path = '/opt/graphite/'
+    pathweb = '{path}webapp/graphite/'
+    host = 'localhost'
+    carbon_path = '{path}'
 
-"""
-Graphite by default installs to /opt/graphite/
-Carbon configuration from:
-https://github.com/graphite-project/carbon/tree/master/conf
-"""
-class Graphite(PythonDeploy):
-    path='/opt/graphite/'
-    web_path='{graphite_path}webapp/graphite/'
-    host='localhost'
-    carbon_path='/opt/graphite/'
-    # internal
-    required_settings=['host']
-    packages={
-        'pip': 'config/requirements.txt',
-        'apt': ['libcairo2-dev','python-cairo','pkg-config','libpng3','libpng12-dev', 'libffi-dev'],
-    }
-    needs=PythonDeploy.needs+[
+    needs = Soppa.needs+[
         'soppa.template',
-        'soppa.nginx',
         'soppa.nodejs',
         'soppa.statsd',
+
+        'soppa.apt',
+        'soppa.pip',
+
+        'soppa.virtualenv',
+        'soppa.supervisor',
+        'soppa.redis',
+        'soppa.remote',
     ]
+    need_web = 'soppa.nginx'
 
-    def hook_pre_config(self):
-        self.sudo('mkdir -p {graphite_path}')
-        self.sudo('chown -R {deploy_user} {graphite_path}')
+    def setup(self):
+        print "setup"
+        return
+        self.sudo('mkdir -p {path}')
+        self.sudo('chown -R {deploy_user} {path}')
 
-        with self.cd('{graphite_path}conf/') as b, self.mlcd('config/') as a:
-            self.up('carbon.conf', '{graphite_path}conf/carbon.conf')
-            self.up('storage-schemas.conf', '{graphite_path}conf/storage-schemas.conf')
+        with self.cd('{path}conf/'):
+            self.up('carbon.conf', '{path}conf/carbon.conf')
+            self.up('storage-schemas.conf', '{path}conf/storage-schemas.conf')
             if not self.exists('graphite.wsgi'):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
-        with self.cd('{graphite_path}webapp/graphite/') as b, self.mlcd('config/') as a:
-            self.up('local_settings.py', '{graphite_path}webapp/graphite/')
-            self.sudo('chown {deploy_user} local_settings.py')
+        self.up('local_settings.py', '{pathweb}')
+        self.sudo('chown {deploy_user} {pathweb}local_settings.py')
 
-        self.up('graphite_supervisor.conf', '{supervisor.conf}')
-        self.up('graphite_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+        self.action('up', 'graphite_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
+        if self.has_need('nginx'):
+            self.action('up', 'graphite_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
 
-        args = 'syncdb --noinput'
-        with self.virtualenv.activate(), self.cd('{web_path}'):
-            self.sudo('python manage.py {args}'.format(args=args))
+        with self.virtualenv.activate(), self.cd('{pathweb}'):
+            self.sudo('python manage.py syncdb --noinput')
 
         # add system-wide python-cairo into virtualenv
         with self.virtualenv.activate():

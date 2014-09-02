@@ -2,8 +2,6 @@ import os, sys, inspect
 from importlib import import_module
 import fnmatch
 
-from soppa.fmt import formatloc
-
 def here(path=None, fn=None, instance=None):
     """ Evaluate path relative to where function was called
     fn = provide scope ('source')
@@ -37,7 +35,6 @@ class Upload(object):
     """ Upload a template """
     def __init__(self, frm, to, instance, caller_path):
         self.instance = instance
-        self.env = instance.get_ctx()
         self.args = (frm, to)
         self.caller_path = caller_path
 
@@ -45,15 +42,15 @@ class Upload(object):
 
     def config_dirs(self):
         dirs = []
-        dirs.append(os.path.join(self.instance.basedir,
-            self.instance.local_conf_path,
+        dirs.append(os.path.join(self.instance.soppa.basedir,
+            self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
-        dirs.append(os.path.join(self.env['local_project_root'],
-            self.instance.local_conf_path,
+        dirs.append(os.path.join(self.instance.soppa.local_project_root,
+            self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
         dirs.append(os.path.join(self.instance.module_path(),
-            self.instance.local_conf_path, ''))
-        dirs += self.env['config_dirs']
+            self.instance.soppa.local_conf_path, ''))
+        dirs += self.instance.soppa.config_dirs
         return dirs
 
     def find(self, path, needle):
@@ -74,11 +71,11 @@ class Upload(object):
         return filepath
 
     def up(self):
-        from_path = formatloc(self.args[0], self.env)
+        from_path = self.instance.fmt(self.args[0])
         if not from_path.startswith('/'):
             filepath = self.choose_template()
             self.args = (filepath,) + self.args[1:]
-        self.args = tuple([formatloc(k, self.env) for k in self.args])
+        self.args = tuple([self.instance.fmt(k) for k in self.args])
 
 class LocalDict(dict):
     """ Format variables against context on return """
@@ -93,3 +90,41 @@ class LocalDict(dict):
 
     def __setattr__(self, key, value):
         self[key] = value
+
+class ObjectDict(dict):
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            # to conform with __getattr__ spec
+            raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+def get_full_dict(obj):
+    return dict(sum([cls.__dict__.items() for cls in obj.__class__.__mro__ if cls.__name__ != "object"], obj.__dict__.items()))
+
+def get_namespaced_class_values(obj):
+    values = get_full_dict(obj.__class__)
+    vals = {}
+    for k,v in values.iteritems():
+        if k.startswith('__') \
+                or callable(v) \
+                or isinstance(v, property) \
+                or isinstance(v, staticmethod):
+            continue
+        if k in obj.reserved_keys:
+            continue
+        vals[k] = v
+    return vals
+
+def fmt_namespaced_values(obj, vals):
+    namespace = obj.get_name()
+    namespaced_vals = {}
+    for k,v in vals.iteritems():
+        value = obj.fmt(v)
+        if not k.startswith('{}_'.format(namespace)):
+            k = '{}_{}'.format(namespace, k)
+        namespaced_vals[k] = value
+    return namespaced_vals

@@ -1,50 +1,41 @@
 from soppa.contrib import *
 
-"""
-Sentry is a Django-project using its own conventions including manage.py as sentry.
-
-Assuming custom sentry.conf.py as project-specific ./conf.py
-"""
-from soppa.python import PythonDeploy
-
-class Sentry(PythonDeploy):
-    need_web='soppa.nginx'
-    need_db='soppa.postgres'
-    django_settings='conf'
-    project='sentry'
+class Sentry(Soppa):
+    """
+    Sentry is a Django-project using its own conventions including manage.py as sentry.
+    Assuming custom sentry.conf.py as project-specific ./conf.py
+    """
+    need_web = 'soppa.nginx'
+    need_db = 'soppa.postgres'
+    django_settings = 'conf'
+    project = 'sentry'
     servername = 'sentry.dev'
-    required_settings=[
+    required_settings = [
             'sentry_servername',
             'need_web',
             'need_db']
-    version = 'Sentry==6.4.4'
-    packages={
-        'pip': [version],
-    }
-    needs=PythonDeploy.needs+[
+    needs = ['soppa.virtualenv',
+        'soppa.supervisor',
+        'soppa.redis',
+        'soppa.remote',
+
         'soppa.template',
+        'soppa.pip',
+        'soppa.apt',
     ]
 
-    def hook_pre_config(self):
+    def setup(self):
         self.sudo('mkdir -p {www_root}htdocs')
 
         if self.has_need('nginx'):
-            self.up('sentry_nginx.conf', '{nginx_dir}conf/sites-enabled/')
+            self.action('up', 'sentry_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
 
         if self.has_need('apache'):
-            self.up('sentry_apache.conf', '{apache_dir}sites-enabled/')
+            self.action('up', 'sentry_apache.conf', '{apache_dir}sites-enabled/', handler=['apache.restart'])
 
         if self.has_need('supervisor'):
-            self.up('sentry_supervisor.conf', '{supervisor.conf}')
+            self.action('up', 'sentry_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
 
-    def hook_pre(self):
-        if self.has_need('mysql'):
-            self.mysql.with_python_packages = True
-        if self.has_need('postgres'):
-            self.postgres.with_python_packages = True
-
-    def hook_post(self):
-        self.up('conf.py', '{usedir}')
-        self.pip.update_packages(self.packages['pip'])
+        self.up('conf.py', '{path}')
 
 sentry_task, sentry = register(Sentry)
