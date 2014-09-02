@@ -1,10 +1,8 @@
 from soppa.contrib import *
 
 class Linux(Soppa):
-    needs=[
-        'soppa.file',
-        'soppa.remote',
-    ]
+    def setup(self):
+        self.remote.setup()
 
     def swap_on(self):
         self.remote.run_cmd('soppa.linux.swap')
@@ -42,5 +40,3 @@ class Linux(Soppa):
         with self.hide('output','warnings'), settings(warn_only=True):
             result = self.sudo("command -v "+name+" >/dev/null 2>&1 || { echo >&2 'Not installed'; exit 1; }")
         return result.succeeded
-
-linux_task, linux = register(Linux)

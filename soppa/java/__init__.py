@@ -1,19 +1,14 @@
 from soppa.contrib import *
 
-"""
-Installs Oracle Java
-- latest versions at http://www.oracle.com/technetwork/java/javase/downloads/
-- tested on Debian Wheezy
-"""
-
 class Java(Soppa):
-    url='http://download.oracle.com/otn-pub/java/jdk/7u55-b13/jdk-7u55-linux-x64.tar.gz'
-    pkg="/opt/java.tar.gz"
-    path="/opt/java-oracle/"
-    needs=[
-        'soppa.file',
-        'soppa.operating',
-    ]
+    """
+    Installs Oracle Java
+    - latest versions at http://www.oracle.com/technetwork/java/javase/downloads/
+    - tested on Debian Wheezy
+    """
+    url = 'http://download.oracle.com/otn-pub/java/jdk/7u55-b13/jdk-7u55-linux-x64.tar.gz'
+    pkg = "/opt/java.tar.gz"
+    path = "/opt/java-oracle/"
 
     def setup(self):
         self.sudo("mkdir -p {java_path}")
@@ -42,5 +37,3 @@ class Java(Soppa):
         pass
         # update-alternatives --config java
         # java -version
-
-java_task, java = register(Java)

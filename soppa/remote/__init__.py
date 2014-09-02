@@ -11,11 +11,6 @@ class SilentEncoder(json.JSONEncoder):
 
 class Remote(Soppa):
     runner_path = '{root.basepath}releases/runner.py'
-    needs=Soppa.needs+[
-        'soppa.file',
-        'soppa.virtualenv',
-        'soppa.template',
-    ]
 
     def to_json(self, data, cls=None):
         return json.dumps(data, encoding='utf-8', cls=cls, ensure_ascii=False, separators=(',',':'))

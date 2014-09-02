@@ -1,14 +1,10 @@
 from soppa.contrib import *
 
 class Postgres(Soppa):
-    path='/etc/postgresql/9.1/main/'
-    name='{project}'
-    user=''
-    password=''
-    needs=[
-        'soppa.operating',
-        'soppa.template',
-    ]
+    path = '/etc/postgresql/9.1/main/'
+    name = '{project}'
+    user = ''
+    password = ''
 
     def setup(self):
         if self.operating.is_linux():
@@ -30,5 +26,3 @@ class Postgres(Soppa):
         with settings(warn_only=True):
             self.sudo("su - postgres -c 'createuser {postgres_user} --no-superuser --no-createdb --no-createrole'")
             self.sudo("su - postgres -c 'createdb {postgres_name} -O {postgres_user}'")
-
-postgres_task, postgres = register(Postgres)

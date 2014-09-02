@@ -2,7 +2,6 @@ import time
 
 from soppa.contrib import *
 
-
 class Supervisor(Soppa):
     """
     Supervisor: http://supervisord.org/
@@ -10,16 +9,6 @@ class Supervisor(Soppa):
     supervisor_conf_dir = '/etc/supervisor/conf.d/'
     supervisor_opt = '-c "/etc/supervisord.conf"'
     supervisor_user = '{root.deploy_user}'
-
-    needs = [
-        'soppa.file',
-        'soppa.operating',
-        'soppa.virtualenv',
-
-        'soppa.template',
-        'soppa.pip',
-        'soppa.apt',
-    ]
 
     def setup(self):
         self.sudo('mkdir -p {supervisor_conf_dir}')
@@ -60,5 +49,3 @@ class Supervisor(Soppa):
     def check(self):
         result = self.sudo("supervisorctl {supervisor_opt} status")
 
-
-supervisor_task, supervisor = register(Supervisor)

@@ -3,18 +3,14 @@ import hashlib, os, tempfile, re, inspect, sys, time, copy
 from soppa.contrib import *
 
 class Pip(Soppa):
-    packages_from = '{soppa.local_project_root}dist/'
+    packages_from = '{soppa.local_path}dist/'
     packages_to = '{www_root}dist/'
     extra_index = ''
-    dirhashes = {}
-    needs=[
-        'soppa.virtualenv',
-        'soppa.file',
-        'soppa.operating',
-        'soppa.linux',
-        'soppa.rsync',
-        'soppa.template',
-    ]
+    _dirhashes = {}
+
+    def setup(self):
+        if not self.linux.binary_exists('pip'):
+            self.install_pip()
 
     # DIST
     def filenameToRequirement(self, filename):
@@ -101,8 +97,8 @@ class Pip(Soppa):
     def path_in_sync(self, path):
         # TODO: save directory-hash for future, instead of being run-specific
         h = self.file.directory_hash(path)
-        curhash = copy.deepcopy(self.dirhashes.get(path, ''))
-        self.dirhashes[path] = h
+        curhash = copy.deepcopy(self._dirhashes.get(path, ''))
+        self._dirhashes[path] = h
         return curhash==h
 
     def sync(self, path=None, target_path=None):
@@ -117,18 +113,12 @@ class Pip(Soppa):
 
     def install_pip(self):
         """ NOTE: pip can remain in broken state, requires removing old /usr/local/bin/pip* files first """
-        path = '{project_root}dist/'
+        path = '{path}dist/'
         self.sudo('mkdir -p {0}'.format(path))
         with self.cd(path):
             self.sudo('wget -S https://bootstrap.pypa.io/get-pip.py')
             self.sudo('python get-pip.py --force --no-use-wheel')
 
-    def setup(self):
-        if not self.linux.binary_exists('pip'):
-            self.install_pip()
-
     def system_package_path(self, name):
         rs = self.sudo("python -c 'import {0}; import os; print os.path.dirname({1}.__file__)'".format(name, name))
         return os.path.normpath(unicode(rs).strip()) + os.sep
-
-pip_task, pip = register(Pip)

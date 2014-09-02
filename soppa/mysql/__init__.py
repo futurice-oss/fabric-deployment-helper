@@ -4,7 +4,6 @@ class Mysql(Soppa):
     user = 'root'
     name = ''
     password = ''
-    needs = Soppa.needs+['soppa.pip','soppa.apt']
 
     def setup(self):
         with settings(warn_only=True):
@@ -38,5 +37,3 @@ class Mysql(Soppa):
                 cmd=mysql_cmd,
                 database=db)
         return self.sudo(shcmd)
-
-mysql_task, mysql = register(Mysql)

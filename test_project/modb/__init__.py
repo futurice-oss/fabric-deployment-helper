@@ -5,4 +5,3 @@ class ModB(Soppa):
     var = 'modb'
     def setup(self):
         return 2
-modb = ModB

@@ -56,9 +56,9 @@ class DjangoDeployTestCase(BaseSuite):
                     http_port=80,
                     max_clients=200,
                     remote_user='root',),
-                hosts=['vm',]),
+                hosts=['vm']),
             dbservers=dict(
-                hosts='vm'),
+                hosts=['vm']),
         )
         # host -specific settings
         hosts = dict(

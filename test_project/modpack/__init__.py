@@ -8,4 +8,3 @@ class ModPack(Soppa):
     modc_mangle_self = '{self.modc.modc_left}'
     def dummy(self, name=None):
         return name
-modpack = ModPack

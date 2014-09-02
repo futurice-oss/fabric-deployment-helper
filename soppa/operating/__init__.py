@@ -19,5 +19,3 @@ class Operating(Soppa):
 
     def is_a(self, name):
         return any(k in sys.platform for k in [name])
-
-operating_task, operating = register(Operating)

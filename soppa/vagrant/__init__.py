@@ -3,9 +3,6 @@ import time
 from soppa.contrib import *
 
 class Vagrant(Soppa):
-    needs=[
-        'soppa.file',
-    ]
     def guest_ip(self):
         return self.sudo("""ifconfig -a eth1|grep "inet addr"|awk '{gsub("addr:","",$2); print $2}'""")
 
@@ -22,5 +19,3 @@ class Vagrant(Soppa):
         # local change
         aslocal()
         self.file.set_setting('/etc/hosts', '{0} {1}'.format(self.guest_ip, name))
-
-vagrant_task, vagrant = register(Vagrant)

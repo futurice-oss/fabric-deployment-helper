@@ -1,22 +1,16 @@
-import os
-
 from soppa.contrib import *
 
-"""
-Setup *.dev to point to 127.0.0.1
-DNS /etc/resolver/dev
-domain mapping /usr/local/etc/dnsmasq.conf
-usage: aslocal dnsmasq:setup
-"""
 class Dnsmasq(Soppa):
-    tld='dev'
-    port='127.0.0.1'
-    daemons_dir='/Library/LaunchDaemons/'
-    brewtool='homebrew.mxcl.dnsmasq.plist'
-    needs=[
-        'soppa.file',
-        'soppa.operating',
-    ]
+    """
+    Setup *.dev to point to 127.0.0.1
+    DNS /etc/resolver/dev
+    domain mapping /usr/local/etc/dnsmasq.conf
+    usage: aslocal dnsmasq:setup
+    """
+    tld = 'dev'
+    port = '127.0.0.1'
+    daemons_dir = '/Library/LaunchDaemons/'
+    brewtool = 'homebrew.mxcl.dnsmasq.plist'
 
     def setup():
         if self.operating.is_osx():
@@ -35,5 +29,3 @@ class Dnsmasq(Soppa):
 
     def stopcmd():
         self.sudo('launchctl unload /Library/LaunchDaemons/homebrew.mxcl.dnsmasq.plist')
-
-dnsmasq_task, dnsmasq = register(Dnsmasq)

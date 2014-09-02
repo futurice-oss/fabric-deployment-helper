@@ -2,28 +2,23 @@ from soppa.contrib import *
 
 class Uwsgi(Soppa):
     """
-    UWSGI is installed into a virtual environment, with configs going under parent, when isntalled as a need.
+    UWSGI:
+    http://uwsgi-docs.readthedocs.org/en/latest/
     """
     processes = 2
     threads = 2
-    wsgi = '{root.project}.wsgi:application'
+    wsgi = '{project}.wsgi:application'
     socket = '127.0.0.1:5900'
     stats = '127.0.0.1:9191'
-    needs = Soppa.needs+[
-        'soppa.file',
-        'soppa.operating',
-        'soppa.virtualenv',
-        'soppa.linux',
-        'soppa.template',
-        'soppa.pip',
-        'soppa.apt',
-    ]
     project = 'uwsgi'
-    conf_dir = '{root.basepath}config/'
+    conf_dir = '{basepath}config/'
 
     def setup(self):
+        self.virtualenv.setup()
+
         self.sudo('mkdir -p {conf_dir}vassals/')
         self.sudo('chown -fR {root.deploy_user} {root.basepath}config/')
+
         self.action('up', 'uwsgi.ini', '{conf_dir}vassals/', handler=['uwsgi.restart'])
 
     def restart(self):
@@ -40,4 +35,3 @@ class Uwsgi(Soppa):
         with self.virtualenv.activate():
             self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.deploy_user} --gid {root.deploy_group} --daemonize {root.basepath}logs/{root.project}-emperor.log')
 
-uwsgi_task, uwsgi = register(Uwsgi)

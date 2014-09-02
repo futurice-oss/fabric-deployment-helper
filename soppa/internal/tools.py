@@ -45,7 +45,7 @@ class Upload(object):
         dirs.append(os.path.join(self.instance.soppa.basedir,
             self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
-        dirs.append(os.path.join(self.instance.soppa.local_project_root,
+        dirs.append(os.path.join(self.instance.soppa.local_path,
             self.instance.soppa.local_conf_path,
             self.instance.get_name(), ''))
         dirs.append(os.path.join(self.instance.module_path(),
@@ -77,20 +77,6 @@ class Upload(object):
             self.args = (filepath,) + self.args[1:]
         self.args = tuple([self.instance.fmt(k) for k in self.args])
 
-class LocalDict(dict):
-    """ Format variables against context on return """
-    def __getattr__(self, key):
-        try:
-            if key.startswith('__'):
-                return self[key]
-            return formatloc(self[key], self)
-        except KeyError:
-            # to conform with __getattr__ spec
-            raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        self[key] = value
-
 class ObjectDict(dict):
     def __getattr__(self, key):
         try:
@@ -105,14 +91,22 @@ class ObjectDict(dict):
 def get_full_dict(obj):
     return dict(sum([cls.__dict__.items() for cls in obj.__class__.__mro__ if cls.__name__ != "object"], obj.__dict__.items()))
 
+def get_class_dict(obj):
+    return dict({k:v for k,v in obj.__dict__.iteritems() if not k.startswith('__')})
+
+def is_configurable_property(key, value):
+    if key.startswith('__') \
+        or callable(value) \
+        or isinstance(value, property) \
+        or isinstance(value, staticmethod):
+            return False
+    return True
+
 def get_namespaced_class_values(obj):
     values = get_full_dict(obj.__class__)
     vals = {}
     for k,v in values.iteritems():
-        if k.startswith('__') \
-                or callable(v) \
-                or isinstance(v, property) \
-                or isinstance(v, staticmethod):
+        if not is_configurable_property(k, v):
             continue
         if k in obj.reserved_keys:
             continue
@@ -128,3 +122,30 @@ def fmt_namespaced_values(obj, vals):
             k = '{}_{}'.format(namespace, k)
         namespaced_vals[k] = value
     return namespaced_vals
+
+def generate_config(module, include_cls=[], include_vars=[], exclude_vars=[], fmt=True):
+    c = {}
+    for k in include_cls:
+        for key,val in get_class_dict(k).iteritems():
+            c[key] = getattr(module, key, val)# actual values from module, default to include
+    for k in [module] + module.get_needs():
+        for key,val in k.__dict__.iteritems():
+            if key.startswith('{}_'.format(k.get_name())):
+                c[key] = val
+    cf = {}
+    for k,v in c.iteritems():
+        if not is_configurable_property(k, v):
+            continue
+        if k in module.reserved_keys:
+            continue
+        if k in exclude_vars:
+            continue
+        if v is None:
+            continue
+        if '__' in k:
+            continue
+        if fmt:
+            v = module.fmt(v)
+        cf[k] = v
+    return cf
+

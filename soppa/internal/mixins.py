@@ -1,8 +1,10 @@
 from contextlib import contextmanager
 from functools import wraps
 import os, sys, re, inspect, hashlib
+import string, copy
 from soppa.internal.tools import import_string, Upload, get_full_dict, get_namespaced_class_values, fmt_namespaced_values
 from soppa import *
+from soppa.internal.logs import dlog
 
 # FABRIC: import and prefix fabric functions into their own namespace to not inadvertedly use them
 from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
@@ -21,6 +23,12 @@ class MetaClass(type):
     def wrapper(fun):
         @wraps(fun)
         def _(self, *args, **kwargs):
+            def run_fn_behaviour(state, fn_name):
+                metname = '{}_{}'.format(state, fn_name)
+                if metname.endswith(fn_name) and hasattr(self, metname):
+                    todoTestingPass=1
+                    return getattr(self, metname)()
+                return False
             dry_run = os.environ.get('DRYRUN', False)
             if fun.__name__=='setup':
                 # (for templating) namespace variables from all known needs to self
@@ -29,11 +37,24 @@ class MetaClass(type):
                     for k,v in namespaced_values.iteritems():
                         if not hasattr(self, k):
                             setattr(self, k, v)
-            if dry_run:
+
+            #pre_fn_name = 'pre_{}'.format(fun.__name__)
+            run_fn_behaviour('pre', fun.__name__)
+
+            def is_api_method(name):
+                if name in API_METHODS:
+                    return True
+                return False
+
+            if dry_run and is_api_method(fun.__name__):
                 result = NoOp()
-                print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self.get_name(), fun.__name__), args,kwargs
+                print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self, fun.__name__), args,kwargs
             else:
                 result = fun(self, *args, **kwargs)
+
+            #post_fn_name = 'post_{}'.format(fun.__name__)
+            run_fn_behaviour('post', fun.__name__)
+
             return result
         return _
 
@@ -42,14 +63,14 @@ class MetaClass(type):
             if callable(fun):
                 if aname.startswith('_'):
                     continue
-                if aname in API_METHODS:
+                if aname in META_METHODS:
                     attrs[aname] = cls.wrapper(attrs[aname])
         return super(MetaClass, cls).__new__(cls, name, bases, attrs)
 
 # get_methods(ApiMixin)
-API_METHODS = ['cd', 'exists', 'get_file', 'hide', 'local', 'local_get',
-'local_put', 'local_sudo', 'mlcd', 'prefix', 'put', 'run', 'sudo', 'up','setup']
-BASIC_NEEDS = ['need_db','need_web','need_vcs',]
+API_METHODS = ['cd', 'exists', 'hide', 'local', 'prefix', 'put', 'run', 'sudo', 'get_file']
+# get_file calls fabric_get
+META_METHODS = API_METHODS+['setup','up','local_get','local_put','local_sudo','mlcd',]
 # need_ALIAS: allows generalizing, so changing need_web = 'soppa.apache', all configs still work.
 
 class ApiMixin(object):
@@ -143,95 +164,19 @@ class ApiMixin(object):
         upload = Upload(frm, to, instance=self, caller_path=caller_path)
         return self.template.up(*upload.args, context=self.__dict__)
 
-class DeployMixin(ApiMixin):
-    def setup_needs(self):
-        """ Ensures .setup() is only run once per-module """
-        for instance in self.get_needs():
-            key_name = '{0}.setup'.format(instance.get_name())
-            if self.is_performed(key_name):
-                continue
-            getattr(instance, 'setup')()
-            self.set_performed(key_name)
-
 class ReleaseMixin(object):
-    needs = ['soppa.operating']
     deploy_user = os.environ.get('USER', 'root')
     deploy_group = 'www-data'
     deploy_os = 'debian'
     project = None
+    host = 'localhost'
+
     www_root = '/srv/www/'
     basepath = '{www_root}{project}/'
-    project_root = '{basepath}www/'
-    time = time.strftime('%Y%m%d%H%M%S')
-    path = '{basepath}releases/{time}'
-    host = 'localhost'
     packages_path = '{basepath}packages/'
+    path = '{basepath}www/'
 
-    def ownership(self, owner=None):
-        owner = owner or self.deploy_user
-        self.sudo('chown -fR {owner} {basepath}', owner=owner)
-
-    def dirs(self):
-        self.sudo('mkdir -p {www_root}dist/')
-        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
-        self.run('mkdir -p {path}')
-        if not self.exists(self.project_root):
-            with self.cd(self.basepath):
-                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
-
-    def symlink(self):
-        """ mv is atomic op on unix; allows seamless deploy """
-        with self.cd(self.basepath):
-            if self.operating.is_linux():
-                self.run('ln -s {path} www.new; mv -T www.new www')
-            else:
-                self.run('rm -f www && ln -sf {path} www')
-
-    def id(self, url):
-        return hashlib.md5(url).hexdigest()
-
-class InspectMixin(object):
-
-    def get_class_settings(self, for_self=False):
-        """ Get all class and instance variables.
-        - __dict__ is not enough.
-        - namespace module keys, to be usable directly, or via module instance (foo_bar vs foo.bar)
-        """
-        rs = {}
-        def is_valid(key, value):
-            # TODO: only allow strings, numbers?
-            if not key.startswith('__')\
-                and not inspect.ismethod(value)\
-                and not inspect.isfunction(value)\
-                and not inspect.isclass(value):
-                return True
-            return False
-        def is_for_module(key):
-            if key \
-                    and not for_self \
-                    and key not in self.reserved_keys \
-                    and key in module_keys:
-                        return True
-            return False
-        values = inspect.getmembers(self)
-        module_keys = self.__class__.__dict__.keys()
-        for key,value in values:
-            if is_valid(key, value):
-                if is_for_module(key):
-                    namespaced_key = key
-                    if not key.startswith('{0}_'.format(self.get_name())):
-                        namespaced_key = '{0}_{1}'.format(self.get_name(), key)
-                    rs[namespaced_key] = value # module scope
-                else:
-                    rs[key] = value # global scope
-        return rs
-
-class NeedMixin(InspectMixin):
-    needs = []
-    need_web = ''
-    need_db = ''
-    need_vcs = ''
-
+class NeedMixin(object):
     def __init__(self, *args, **kwargs):
         self._CACHE = {}
         self.args = args
@@ -240,15 +185,10 @@ class NeedMixin(InspectMixin):
     def get_needs(self, as_str=False):
         """ Return module dependendies defined in needs=[] and need_* """
         rs = set()
+        if not hasattr(self, 'needs'):
+            return []
         for k in self.needs:
             rs.add(k)
-        for bneed in BASIC_NEEDS:
-            if self.__dict__.get(bneed, None): # recursion: __getattr__ -> has_need -> get_needs
-                value = self.__dict__[bneed]
-                if isinstance(value, basestring):
-                    rs.add(value)
-                else:
-                    raise Exception("Unkown format")
         rs = list(rs)
         if as_str:
             return rs
@@ -258,16 +198,10 @@ class NeedMixin(InspectMixin):
         for k in self.get_needs(as_str=True):
             if re.findall(string, k):
                 return k
-        return None
-
-    def add_need(self, string):
-        if self.find_need(string):
-            return
-        self.needs.append(string)
-        self.get_and_load_need(string)
+        return string
 
     def has_need(self, string):
-        return any([string == k.split('.')[-1] for k in self.get_needs(as_str=True)])
+        return True
 
     def rescope_namespaced_variables(self, curscope):
         """
@@ -284,13 +218,28 @@ class NeedMixin(InspectMixin):
                 new_data[aliased_key] = v
         return new_data
 
-    def get_and_load_need(self, key, alias=None, ctx={}):
-        """ On-demand needs=[] resolve """
-        name = key.split('.')[-1]
-        alias = alias or name
-        module = import_string(key)
-        fn = getattr(module, name)
+    def load(self, name):
+        """ Load a module class by its name
+        nginx -> soppa.Nginx
+        mymodule.nginx -> mymodule.Nginx
         """
+        cls_name = name.split('.')[-1]
+        import_name = copy.copy(name)
+        if '.' not in name:
+            import_name = '{}.{}'.format(DEFAULT_NS, name)
+        module = import_string(import_name)
+        cls = self.match_module_to_class(module, cls_name)
+        return getattr(module, cls)
+
+    def match_module_to_class(self, module, name):
+        pattern = '^{}$'.format(name.capitalize())
+        matches = [re.findall(pattern, k, re.IGNORECASE) for k in module.__dict__.keys()]
+        return [k.pop() for k in matches if k].pop()
+
+    def get_and_load_need(self, key, alias=None, ctx={}):
+        """ On-demand module resolve.
+        self.nginx -> soppa.nginx -> Nginx()
+
         Pass configuration from parent.
         - own namespace
         - self.alias_var =>
@@ -301,10 +250,9 @@ class NeedMixin(InspectMixin):
         - {self.alias.foo} => {foo}
         - alias_key = '{key}' raises exception
         """
-        needs = self.get_needs(as_str=True)
-        needs_keys = [k.split('.')[-1] for k in needs]
-        if alias not in needs_keys:
-            needs_keys.append(alias)
+        name = key.split('.')[-1]
+        cls = self.load(key)
+        alias = alias or name
 
         curscope = {}
         curscope.update(**self.__dict__)
@@ -327,11 +275,169 @@ class NeedMixin(InspectMixin):
             parent_values.update(**need_values(curscope, name))
 
         context = {}
-        context.update(**self.kwargs['ctx'])#parent configuration trickles down
+        context.update(**self.kwargs.get('ctx', {}))#parent configuration trickles down
         context.update(**parent_values)
         context['parent_instance'] = self
 
-        return fn(ctx_parent=context)
+        return cls(ctx_parent=context)
+
+    def _load_need(self, key, alias=None, ctx={}):
+        return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)
+
+    def __getattr__(self, key):
+        try:
+            result = self.__dict__[key]
+        except KeyError, e:
+            # lazy-load modules
+            if not key.startswith('__') and key not in ['needs'] and self.has_need(key):
+                instance = self._load_need(key, alias=None, ctx={'args':self.args, 'kwargs': self.kwargs})
+                name = key.split('.')[-1]
+                setattr(self, name, instance)
+                return instance
+            raise AttributeError(e)
+        return result
+
+class FormatMixin(object):
+    ALLOWED_CHARS = string.ascii_letters + '_.'
+    strict_fmt = True
+
+    def is_ascii_letters(self, s, bucket):
+        return all(c in bucket for c in s)
+
+    def escape_bad_matches(self, s):
+        for match in re.findall('{(.+?)}', s):
+            if not self.is_ascii_letters(match, self.ALLOWED_CHARS):
+                match = re.escape(match)
+                s = re.sub('({0})'.format(match),
+                        r'{\1}', s)
+        return s
+
+    def fmtkeys(self, s):
+        return [k[1] for k in string.Formatter().parse(s) if k[1]]
+
+    def fmt(self, string, **kwargs):
+        """ Format a string.
+        self.fmt(string) vs string.format(self=self)
+        self.fmt(string, foo=2) vs string.format(foo=2, self=self)
+
+        Adds self as formatting argument, and prefix keys with self., if key not in arguments.
+        {foo} => {self.foo}.format(self=self)
+        {foo} kwargs(foo=2) => {foo}.format(foo=foo)
+        {foo.bar} kwargs(foo=2) => {foo}.format(self=self)
+        """
+        for times in range(6):
+            keys = []
+            if isinstance(string, basestring):
+                string = self.escape_bad_matches(string)
+                if '{' not in string:
+                    break
+                keys = self.fmtkeys(string)
+            else:
+                return string
+            kwargs_keys = kwargs.keys()
+            for key in keys:
+                if key not in kwargs_keys:
+                    if not key.startswith('self.'):
+                        realkey = key.split('.')[0]
+                        if hasattr(self, realkey):
+                            if self.strict_fmt and getattr(self, realkey) is None:
+                                raise Exception("Undefined key: {}".format(realkey))
+                            string = string.replace('{'+key+'}', '{self.'+key+'}')
+                        else:
+                            if not self.strict_fmt:
+                                kwargs.setdefault(key, '')
+            if '{self.' in string:
+                kwargs['self'] = self
+            string = string.format(**kwargs)
+        return string
+
+class DirectoryMixin(object):
+    """
+    A deployment model for projects.
+    Example:
+    /www # www_root
+    /www/project/ # basepath
+    /www/project/www/ # path
+    /www/project/releases/X/ # release_path
+    www -> releases/X # <symlink>
+    """
+
+    def pre_setup(self):
+        self.dirs()
+        self.ownership()
+        self.action('packages', given=lambda self: not self.is_deferred('packages'))
+
+    def post_setup(self):
+        self.copy_path_files_to_release_path()
+        self.symlink()
+
+    def packages(self):
+        pm = self.packman()
+        packages = pm.get_packages()
+        pm.write_packages(packages)
+        pm.download_packages(packages)
+        pm.sync_packages(packages)
+        pm.install_packages(packages)
+
+    @property
+    def release_path(self):
+        if not hasattr(self, 'time'):
+            self.time = time.strftime('%Y%m%d%H%M%S')
+        return self.fmt('{basepath}releases/{time}/')
+
+    def ownership(self, owner=None):
+        owner = owner or self.deploy_user
+        self.sudo('chown -fR {owner} {basepath}', owner=owner)
+
+    def dirs(self):
+        self.sudo('mkdir -p {www_root}dist/')
+        self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
+        self.run('mkdir -p {}'.format(self.release_path))
+        if not self.exists(self.path):
+            with self.cd(self.basepath):
+                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
+
+    def symlink(self):
+        """ mv is atomic op on unix; allows seamless deploy """
+        with self.cd(self.basepath):
+            if self.operating.is_linux():
+                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path.rstrip('/')))
+            else:
+                self.run('rm -f www && ln -sf {} www'.format(self.release_path.rstrip('/')))
+
+    def copy_path_files_to_release_path(self):
+        """
+        Files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
+        """
+        for name,data in dlog.data['hosts'][env.host_string].iteritems():
+            for key in data.keys():
+                for k, action in enumerate(data[key]):
+                    target = action.get('target')
+                    if target:
+                        if self.path in target:
+                            release_target = target.replace(self.path, self.release_path)
+                            reldir = os.path.dirname(release_target)
+                            self.run('mkdir -p {}; cp {} {}'.format(reldir, target, release_target))
+
+    def setup_need(self, instance):
+        """ Ensures module.setup() is run only once per-host """
+        key_name = '{0}.setup'.format(instance.get_name())
+        if self.is_performed(key_name):
+            return
+        getattr(instance, 'setup')()
+        self.set_performed(key_name)
+
+    def is_performed(self, fn):
+        env.performed.setdefault(env.host_string, {})
+        env.performed[env.host_string].setdefault(fn, False)
+        return env.performed[env.host_string][fn]
+
+    def set_performed(self, fn):
+        self.is_performed(fn)
+        env.performed[env.host_string][fn] = True
+
+    def id(self, url):
+        return hashlib.md5(url).hexdigest()
 
 class NoOp(object):
     succeeded = True

@@ -2,9 +2,6 @@ import hashlib
 from soppa.contrib import *
 
 class Package(Soppa):
-    needs = [
-        'soppa.file',
-    ]
 
     def file_as_release(self, url, dest):
         """ Download a TAR file to be used as a release """
@@ -40,5 +37,3 @@ class Package(Soppa):
         pkg = url.split(by)[-1]
         pkg = pkg.split('.')[0]
         return pkg
-
-package_task, package = register(Package)

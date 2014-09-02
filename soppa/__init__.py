@@ -4,7 +4,6 @@ from pprint import pprint as pp
 
 from fabric.api import env, task, execute
 from soppa.internal.tools import here, ObjectDict
-from soppa.internal.logs import dlog
 
 # FABRIC
 env.use_ssh_config = True
@@ -18,7 +17,7 @@ env.performed = {}
 
 # Soppa
 c = SOPPA_DEFAULTS = ObjectDict()
-c.local_project_root = here(fn=inspect.getfile(sys._getframe(1)))
+c.local_path = here(fn=inspect.getfile(sys._getframe(1)))
 c.basedir = os.getcwd() + os.sep
 c.soppadir = here()
 
@@ -30,14 +29,15 @@ c.packmans = [
     'soppa.internal.packagehandler.PipVenv',
     'soppa.internal.packagehandler.Apt']
 
+DEFAULT_NS = 'soppa'
+
 @task
 def soppa_start():
-    print "Soppa: Start"
+    pass
 
 @task
 def soppa_end():
-    print "Soppa: End"
-    from soppa.contrib import dlog
+    from soppa.internal.logs import dlog
     # TODO: save to a file on remote machine
     pp(dlog.data)
 

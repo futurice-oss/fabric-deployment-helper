@@ -1,22 +1,12 @@
 from soppa.contrib import *
+from soppa.internal.mixins import DirectoryMixin
 
-class Django(Soppa):
-    settings='{project}.settings.prod'
-    needs=['soppa.file',
-        'soppa.template',
-        'soppa.remote',
-        'soppa.operating',
-        'soppa.apt',
+class Django(Soppa, DirectoryMixin):
+    settings = '{project}.settings.prod'
 
-        'soppa.nodejs',
-        'soppa.virtualenv',
-        'soppa.supervisor',
-        'soppa.redis',
-        'soppa.pip',
-    ]
-    need_web = 'soppa.nginx'
-    need_db = 'soppa.mysql'
-    need_wsgi = 'soppa.uwsgi'
+    def setup(self):
+        self.virtualenv.setup()
+        self.nodejs.setup()
 
     def hook_post(self):
         self.set_dsm(self.settings)
@@ -30,14 +20,14 @@ class Django(Soppa):
         with settings(warn_only=True):
             self.manage('migrate --noinput')# assumes South/django 1.7
 
-        self.check()
+        self.check_dsm()
 
     def set_dsm(self, dsm):
         self.file.set_setting(
                 self.fmt('{virtualenv_path}bin/activate'),
                 self.fmt('export DJANGO_SETTINGS_MODULE={dsm}', dsm=dsm))
 
-    def check(self):
+    def check_dsm(self):
         with self.virtualenv.activate(), self.cd(self.path):
             result = self.sudo('env|grep DJANGO_SETTINGS_MODULE')
             assert self.fmt(self.settings) in result
@@ -76,5 +66,3 @@ class Django(Soppa):
             options=db.get('OPTIONS', {}),
         )
         return rs
-
-django_task, django = register(Django)

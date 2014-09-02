@@ -3,9 +3,6 @@ import copy
 from soppa.contrib import *
 
 class Template(Soppa):
-    needs = Soppa.needs+[
-        'soppa.file',
-        'soppa.jinja',]
 
     def determine_target_filename(self, a, b):
         af = a.split('/')[-1]
@@ -31,7 +28,7 @@ class Template(Soppa):
         # DIFF: compare against root folder (that has the current version) instead of release folder
         diff_filename = copy.deepcopy(filename)
         if self.path in diff_filename:
-            diff_filename = diff_filename.replace(self.path, self.project_root)
+            diff_filename = diff_filename.replace(self.path, self.path)
         delta = self.file.diff_remote_to_local(diff_filename, tf.name)
         result_list = self.put(tf.name, filename, use_sudo=use_sudo)
         tf.close()
@@ -44,5 +41,3 @@ class Template(Soppa):
         result.modified = True if delta else False
         dlog.add(bucket='files', name=self.parent.get_name(), data=result.__dict__)
         return result
-
-template_task, template = register(Template)

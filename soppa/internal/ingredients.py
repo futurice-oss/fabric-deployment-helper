@@ -29,7 +29,6 @@ from soppa.template import *
 from soppa.uwsgi import *
 from soppa.vagrant import *
 from soppa.virtualenv import *
-from soppa.xs import *
 
 def print_imports(module):
     d = here(fn=import_string(module).__file__)
