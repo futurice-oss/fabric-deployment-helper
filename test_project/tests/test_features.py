@@ -64,7 +64,7 @@ class SoppaTest(BaseSuite):
     def test_log_changes(self):
         m = ModPack()
         self.assertFalse(m.isDirty())
-        dlog.add('files', m.get_name(), {'diff':'!','source':'foo','target':'bar'})
+        m.log.add('files', m.get_name(), {'diff':'!','source':'foo','target':'bar'})
         self.assertTrue(m.isDirty())
 
     def test_packages_possibilities(self):

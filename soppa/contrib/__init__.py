@@ -4,7 +4,7 @@ from subprocess import call
 
 from soppa import *
 from soppa.internal.tools import import_string, get_full_dict, get_namespaced_class_values, fmt_namespaced_values, get_class_dict, is_configurable_property
-from soppa.internal.logs import DeployLog, dlog
+from soppa.internal.logs import DeployLog
 from soppa.internal.mixins import ApiMixin, NeedMixin, ReleaseMixin, FormatMixin
 from soppa.internal.mixins import with_settings, settings#TODO: namespace under ApiMixin?
 from soppa.internal.manager import PackageManager
@@ -28,6 +28,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         self.args = args
         self.kwargs = kwargs
         self.kwargs['ctx'] = ctx
+        self.log = DeployLog()
 
         # Apply all inherited variables to have them in __dict__ scope
         # - allows to format dynamic variables -- fmt() -- instance variables in __init__
@@ -113,7 +114,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             rs['method'] = method
             rs['handler'] = '{}.{}'.format(self.get_name(), name)
             rs['modified'] = False
-            dlog.add('defer', 'all', rs)
+            self.log.add('defer', 'all', rs)
             return
         handlers = kwargs.pop('handler', [])
         for handler in handlers:
@@ -132,7 +133,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
                 rs = result.__dict__
                 rs['instance'] = handler_instance
                 rs['handler'] = handler
-                dlog.add('defer', 'all', rs)
+                self.log.add('defer', 'all', rs)
                 continue
             # TODO: might always want restart, even if not modified?
             if is_dirty(result):
@@ -155,8 +156,8 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         dirty = False
         # has configuration for need changed?
         # TODO: read config from server for initial state
-        # TODO: if never deployed, should be dirty.
-        for host, data in dlog.data.get('hosts', {}).iteritems():
+        # TODO: - if never deployed, should be dirty.
+        for host, data in self.log.data.get('hosts', {}).iteritems():
             if not data.get(self.get_name()):
                 continue
             for outcome in data[self.get_name()].get('files', []):

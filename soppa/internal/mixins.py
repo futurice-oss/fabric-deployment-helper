@@ -4,7 +4,6 @@ import os, sys, re, inspect, hashlib
 import string, copy
 from soppa.internal.tools import import_string, Upload, get_full_dict, get_namespaced_class_values, fmt_namespaced_values
 from soppa import *
-from soppa.internal.logs import dlog
 
 # FABRIC: import and prefix fabric functions into their own namespace to not inadvertedly use them
 from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
@@ -409,7 +408,7 @@ class DirectoryMixin(object):
         """
         Files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
         """
-        for name,data in dlog.data['hosts'][env.host_string].iteritems():
+        for name,data in self.log.data['hosts'][env.host_string].iteritems():
             for key in data.keys():
                 for k, action in enumerate(data[key]):
                     target = action.get('target')

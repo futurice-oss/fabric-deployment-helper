@@ -30,18 +30,3 @@ c.packmans = [
     'soppa.internal.packagehandler.Apt']
 
 DEFAULT_NS = 'soppa'
-
-@task
-def soppa_start():
-    pass
-
-@task
-def soppa_end():
-    from soppa.internal.logs import dlog
-    # TODO: save to a file on remote machine
-    pp(dlog.data)
-
-# insert 'always on' tasks
-env.tasks.insert(0, 'soppa_start')
-env.tasks.append('soppa_end')
-

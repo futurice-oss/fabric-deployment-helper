@@ -39,5 +39,5 @@ class Template(Soppa):
         result.target = filename
         result.diff = delta
         result.modified = True if delta else False
-        dlog.add(bucket='files', name=self.parent.get_name(), data=result.__dict__)
+        self.log.add(bucket='files', name=self.parent.get_name(), data=result.__dict__)
         return result

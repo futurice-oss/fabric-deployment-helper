@@ -6,7 +6,6 @@ from fabric.api import env, execute, task
 
 from soppa.internal.mixins import NeedMixin, ApiMixin, FormatMixin, ReleaseMixin
 from soppa.internal.tools import import_string, generate_config
-from soppa.internal.logs import dlog
 
 
 class Runner(NeedMixin):
@@ -127,7 +126,7 @@ class Runner(NeedMixin):
             module.post_setup()
 
         # run deferred handlers
-        self.restart()
+        self.restart(modules)
 
     def configure(self, needs):
         """ Prepare pre-requisitives a module has, before it can be setup """
@@ -143,10 +142,16 @@ class Runner(NeedMixin):
             print "SUDO PASSWORD PROMPT (leave blank, if none needed)"
             module.env.password = getpass.getpass('Sudo password ({0}):'.format(env.host))
 
-    def restart(self):
-        for k,v in dlog.data['hosts'][env.host_string].iteritems():
-            if k == 'all':
-                # TODO: group, could be multiple changed files per module
-                for deferred in v.get('defer'):
-                    if deferred['modified']:
-                        deferred['instance']()
+    def restart(self, modules):
+        deferred = []
+        # TODO: group, could be multiple changed files per module
+        for module in modules:
+            if not module.log.data['hosts'].get(env.host_string):
+                continue
+            for k,v in module.log.data['hosts'][env.host_string].iteritems():
+                if k == 'all':
+                    deferred.append(v)
+        for k in deferred:
+            for deferred in k.get('defer'):
+                if deferred['modified']:
+                    deferred['instance']()

@@ -19,5 +19,3 @@ class DeployLog(object):
         hosts[host].setdefault(name, {})
         hosts[host][name].setdefault(bucket, [])
         hosts[host][name][bucket].append(data)
-
-dlog = DeployLog()
