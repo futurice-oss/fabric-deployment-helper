@@ -20,13 +20,12 @@ c = SOPPA_DEFAULTS = ObjectDict()
 c.local_path = here(fn=inspect.getfile(sys._getframe(1)))
 c.basedir = os.getcwd() + os.sep
 c.soppadir = here()
-
 c.config_dirs = ['config/',]
 c.local_conf_path = 'config/'
 
 c.packmans = [
     'soppa.internal.packagehandler.Pip',
     'soppa.internal.packagehandler.PipVenv',
-    'soppa.internal.packagehandler.Apt']
+    'soppa.internal.packagehandler.Apt',]
 
 DEFAULT_NS = 'soppa'
