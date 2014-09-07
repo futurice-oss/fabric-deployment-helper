@@ -48,6 +48,7 @@ class MetaClass(type):
             if dry_run and is_api_method(fun.__name__):
                 result = NoOp()
                 print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self, fun.__name__), args,kwargs
+                self.root.log.add_action([self, fun.__name__, args, kwargs])
             else:
                 result = fun(self, *args, **kwargs)
 
