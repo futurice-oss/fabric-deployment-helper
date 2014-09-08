@@ -24,7 +24,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
     defer_handlers = []
 
     def __init__(self, ctx={}, *args, **kwargs):
-        super(Soppa, self).__init__(*args, **kwargs)
+        self._CACHE = {}
         self.args = args
         self.kwargs = kwargs
         self.kwargs['ctx'] = ctx
@@ -71,10 +71,10 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             if k not in [self.get_name()]:
                 setattr(self, k, v)
 
-        namespaced_values = get_namespaced_class_values(self)
-
         if self.project is None: # default project name for project-naming convention used by ReleaseMixin
             self.project = self.get_name()
+
+        namespaced_values = get_namespaced_class_values(self)
 
         # rescope configuration
         new_data = self.rescope_namespaced_variables(self.__dict__)

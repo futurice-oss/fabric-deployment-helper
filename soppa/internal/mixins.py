@@ -169,7 +169,7 @@ class ReleaseMixin(object):
     deploy_group = 'www-data'
     deploy_os = 'debian'
     project = None
-    host = 'localhost'
+    host = 'localhost'#TODO:for?
 
     www_root = '/srv/www/'
     basepath = '{www_root}{project}/'
@@ -177,10 +177,6 @@ class ReleaseMixin(object):
     path = '{basepath}www/'
 
 class NeedMixin(object):
-    def __init__(self, *args, **kwargs):
-        self._CACHE = {}
-        self.args = args
-        self.kwargs = kwargs
     
     def get_needs(self, as_str=False):
         """ Return module dependendies defined in needs=[] and need_* """
@@ -289,7 +285,7 @@ class NeedMixin(object):
             result = self.__dict__[key]
         except KeyError, e:
             # lazy-load modules
-            if not key.startswith('__') and key not in ['needs'] and self.has_need(key):
+            if not key.startswith('__'):
                 instance = self._load_need(key, alias=None, ctx={'args':self.args, 'kwargs': self.kwargs})
                 name = key.split('.')[-1]
                 setattr(self, name, instance)

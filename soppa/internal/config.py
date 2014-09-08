@@ -8,9 +8,9 @@ class Config(object):
     """ Main configuration in INI format
     - Has custom list-formatting support
     """
-    def __init__(self, path='config.ini', parser=None):
+    def __init__(self, path='config.ini', parser=None, allow_no_value=True):
         self.path = path
-        self.c = parser or ConfigParser.SafeConfigParser()
+        self.c = parser or ConfigParser.SafeConfigParser(allow_no_value=allow_no_value)
 
     def read(self):
         self.c.read(self.path)
