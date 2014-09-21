@@ -70,9 +70,14 @@ class SoppaTest(BaseSuite):
     def test_packages_possibilities(self):
         m = ModPack()
         self.assertTrue(m.packman().unique_handlers())
+        self.assertTrue(m.has_need('modc'))
+        self.assertFalse(m.has_need('foo'))
+        self.assertFalse(m.has_need('project'))
 
     def test_kwargs_do_not_overwrite_needs(self):
         p = Pip(ctx={'virtualenv':{}})
+        self.assertFalse(p.has_need('virtualenv'))
+        p.needs.append('virtualenv')
         self.assertTrue(p.has_need('virtualenv'))
         self.assertFalse(p.virtualenv != {})
 

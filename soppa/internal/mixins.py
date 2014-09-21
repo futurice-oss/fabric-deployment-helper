@@ -192,12 +192,16 @@ class NeedMixin(object):
 
     def find_need(self, string):
         for k in self.get_needs(as_str=True):
-            if re.findall(string, k):
+            if k.endswith(string):
                 return k
         return string
 
     def has_need(self, string):
-        return True
+        for k in self.get_needs(as_str=True):
+            k = k.split('.')[-1]
+            if k.endswith(string):
+                return True
+        return False
 
     def rescope_namespaced_variables(self, curscope):
         """
@@ -361,19 +365,10 @@ class DirectoryMixin(object):
     def pre_setup(self):
         self.dirs()
         self.ownership()
-        self.action('packages', given=lambda self: not self.is_deferred('packages'))
 
     def post_setup(self):
         self.copy_path_files_to_release_path()
         self.symlink()
-
-    def packages(self):
-        pm = self.packman()
-        packages = pm.get_packages()
-        pm.write_packages(packages)
-        pm.download_packages(packages)
-        pm.sync_packages(packages)
-        pm.install_packages(packages)
 
     @property
     def release_path(self):

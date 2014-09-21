@@ -6,6 +6,7 @@ from fabric.api import env, execute, task
 
 from soppa.internal.mixins import NeedMixin, ApiMixin, FormatMixin, ReleaseMixin
 from soppa.internal.tools import import_string, generate_config
+from soppa.internal.config import update_config, Config, load
 
 
 class Runner(NeedMixin):
@@ -13,7 +14,6 @@ class Runner(NeedMixin):
     A Runner allows more control over deployments, by acting as a wrapper around the deployment life-cycle.
     """
     def __init__(self, config={}, hosts={}, roles={}, recipe={}, *args, **kwargs):
-        super(Runner, self).__init__(*args, **kwargs)
         self.config = config
         if not self.config.get('defer_handlers'):
             self.config['defer_handlers'] = '*'
@@ -93,6 +93,26 @@ class Runner(NeedMixin):
 
         module_classes = self.get_module_classes()
 
+        # generate default .ini
+        # A single deployment is a shared entity, as in, the configuration encompasses everything (thus module_classes[0] for config)
+        DEFAULT_INI_NAME = 'config.ini'
+        config_path = '{}{}'.format(module_classes[0]().soppa.local_conf_path, DEFAULT_INI_NAME)
+        instances, values = update_config(module_classes[0], path=config_path)
+
+        # flatten {namespace}_key=>val, to be picked up correctly within modules
+        flatval = config
+        for k,v in values.get('globals', {}).iteritems():
+            flatval.setdefault(k, v)
+        values.pop('globals', False)
+        for k,v in values.iteritems():
+            if isinstance(v, dict):
+                for k2,v2 in v.iteritems():
+                    key = k2
+                    if not key.startswith(k):
+                        key = '{}_{}'.format(k, k2)
+                    flatval.setdefault(key, v2)
+        config.update(flatval)
+
         # instantiate with configuration
         modules = []
         for module in module_classes:
@@ -104,10 +124,13 @@ class Runner(NeedMixin):
 
         # copy configuration
         isnew = []
+        cfg = {}
         for module in modules:
             needs = module.get_needs()
             isnew.append(self.configure(needs))
             isnew.append(self.configure([module]))
+            cfg.update(generate_config(module))
+
         if any(isnew):
             raise Exception("""NOTICE: Default Configuration generated into {}.
             Review settings and configure any changes. Next run is live""".format('$local_conf_path'))
@@ -118,8 +141,13 @@ class Runner(NeedMixin):
             module.pre_setup()
 
         # run deferred handlers
-        #self.packages()
-        #self.run_deferred('packages')
+        for module in modules:
+            for instance in instances:
+                # NOTE: packages() returns instances spawned from caller
+                child = getattr(module, instance.get_name())
+                packages = child.packages()
+                child.packages_getset(packages)
+                #child.run_deferred('packages')
 
         for module in modules:
             module.setup()

@@ -23,12 +23,18 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
     strict_fmt = True
     defer_handlers = []
 
+    def apply_value(self, key, value):
+        if self.has_need(key):
+            return
+        setattr(self, key, value)
+
     def __init__(self, ctx={}, *args, **kwargs):
         self._CACHE = {}
         self.args = args
         self.kwargs = kwargs
         self.kwargs['ctx'] = ctx
         self.log = DeployLog()
+        #self.action('packages', given=lambda self: not self.is_deferred('packages'))
 
         # Apply all inherited variables to have them in __dict__ scope
         # - allows to format dynamic variables -- fmt() -- instance variables in __init__
@@ -43,7 +49,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
                     cur_dict_value = cur_values.get(k, None)
                     cur_instance_value = getattr(self, k)
                     if not cur_dict_value and not callable(cur_instance_value):
-                        setattr(self, k, v)
+                        self.apply_value(k, v)
                         r[k] = v
             return r
         def cur_values(c):
@@ -69,7 +75,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         for k,v in context.iteritems():
             #if not self.has_need(k) and k not in [self.get_name()]:
             if k not in [self.get_name()]:
-                setattr(self, k, v)
+                self.apply_value(k, v)
 
         if self.project is None: # default project name for project-naming convention used by ReleaseMixin
             self.project = self.get_name()
@@ -79,19 +85,19 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         # rescope configuration
         new_data = self.rescope_namespaced_variables(self.__dict__)
         for k,v in new_data.iteritems():
-            setattr(self, k, v)
+            self.apply_value(k, v)
         
         # pre-format all strings
         for key in self.__dict__.keys():
             value = getattr(self, key)
             if isinstance(value, basestring):
-                setattr(self, key, self.fmt(value))
+                self.apply_value(key, self.fmt(value))
 
         # namespace class attributes
         keys = self.__dict__.keys()
         for k,v in fmt_namespaced_values(self, namespaced_values).iteritems():
             if k not in keys:
-                setattr(self, k, v)
+                self.apply_value(k, v)
 
     def is_deferred(self, handler):
         for rule in self.defer_handlers:
@@ -170,6 +176,17 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         if not self._CACHE.get(key):
             self._CACHE[key] = PackageManager(self)
         return self._CACHE[key]
+
+    def packages(self):
+        pm = self.packman()
+        return pm.get_packages()
+
+    def packages_getset(self, packages):
+        pm = self.packman()
+        pm.write_packages(packages)
+        pm.download_packages(packages)
+        pm.sync_packages(packages)
+        pm.install_packages(packages)
 
     @property
     def parent(self):

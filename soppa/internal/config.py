@@ -4,6 +4,10 @@ import collections
 from soppa.internal.tools import generate_config
 from soppa.internal.mixins import ReleaseMixin
 
+def load(path):
+    c = Config(path=path)
+    return c.values()
+
 class Config(object):
     """ Main configuration in INI format
     - Has custom list-formatting support
@@ -108,3 +112,4 @@ def update_config(cls, path='config.ini'):
 
     Jinja.jinja_undefined = original_value
     os.environ.pop('DRYRUN', False)
+    return instances, c.values()
