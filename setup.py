@@ -30,7 +30,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name = "soppa",
-    version = "0.0.6",
+    version = "0.0.7",
     description = "Soppa - Sauce for Fabric",
     url = "http://github.com/futurice/soppa",
     author = "Jussi Vaihia",

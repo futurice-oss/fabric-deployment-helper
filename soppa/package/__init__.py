@@ -3,6 +3,9 @@ from soppa.contrib import *
 
 class Package(Soppa):
 
+    def setup(self):
+        self.sudo('mkdir -p {packages_path}')
+
     def file_as_release(self, url, dest):
         """ Download a TAR file to be used as a release """
         download = '{}{}'.format(self.root.packages_path, self.id(url))

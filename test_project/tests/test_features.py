@@ -1,9 +1,13 @@
 import unittest, copy, os
 import shutil
 
-from soppa.internal.ingredients import *
+from soppa.contrib import *
+from soppa.internal.ingredients import Pip, Django, File, Template, Virtualenv, Graphite
+
 from soppa.internal.tools import ObjectDict, Upload, generate_config
 from soppa.internal.runner.default import Runner
+from soppa.internal.config import update_config
+from soppa.internal.mixins import DirectoryMixin
 
 from ..moda import ModA
 from ..modb import ModB
@@ -293,3 +297,14 @@ class WaterTest(BaseSuite):
 
         i = ModC(dict(modc_left='up'))
         self.assertEqual(i.modc_left, 'up')
+
+class ConfigTest(BaseSuite):
+    def test_reading(self):
+        instances, values = update_config(Django, path=None, ctx={})
+        self.assertTrue(all(k.get_name() in ['django','virtualenv','nodejs'] for k in instances))
+        self.assertEquals(values['globals']['path'], u'/srv/www/django/www/')
+        self.assertTrue('django' in values['nodejs']['nodejs_binary_dir'])
+
+        instances, values = update_config(Django, path=None, ctx={'project': 'stockticker'})
+        self.assertEquals(values['globals']['path'], u'/srv/www/stockticker/www/')
+        self.assertTrue('stockticker' in values['nodejs']['nodejs_binary_dir'])

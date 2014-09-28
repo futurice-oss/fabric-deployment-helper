@@ -26,6 +26,8 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
     def apply_value(self, key, value):
         if self.has_need(key):
             return
+        if callable(getattr(self, key, None)):
+            return
         setattr(self, key, value)
 
     def __init__(self, ctx={}, *args, **kwargs):
@@ -229,12 +231,6 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             self.soppa.local_conf_path,
             self.get_name(),
             '')
-
-    def pre_setup(self):
-        return {}
-
-    def post_setup(self):
-        return {}
 
     def setup(self):
         return {}

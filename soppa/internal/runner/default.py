@@ -64,7 +64,6 @@ class Runner(NeedMixin):
 
     def run(self):
         """ A run lives in a Fabric execution (env.host_string) context """
-        print "RUN: {}".format(self)
         if not all([self.get_hosts_for(ingredient['roles']) for ingredient in self.recipe]):
             raise Exception("No hosts configured for {}".format(ingredient))
 
@@ -97,10 +96,12 @@ class Runner(NeedMixin):
         # A single deployment is a shared entity, as in, the configuration encompasses everything (thus module_classes[0] for config)
         DEFAULT_INI_NAME = 'config.ini'
         config_path = '{}{}'.format(module_classes[0]().soppa.local_conf_path, DEFAULT_INI_NAME)
-        instances, values = update_config(module_classes[0], path=config_path)
+        # TODO: load any configuration files, or if none specified, use default configuration
+        # default configuration
+        instances, values = update_config(module_classes[0], path=None, ctx=config)
 
         # flatten {namespace}_key=>val, to be picked up correctly within modules
-        flatval = config
+        flatval = {}
         for k,v in values.get('globals', {}).iteritems():
             flatval.setdefault(k, v)
         values.pop('globals', False)
@@ -111,7 +112,9 @@ class Runner(NeedMixin):
                     if not key.startswith(k):
                         key = '{}_{}'.format(k, k2)
                     flatval.setdefault(key, v2)
-        config.update(flatval)
+        # TODO: load only config-files specified in deployment-recipe
+        flatval.update(config)
+        config=flatval
 
         # instantiate with configuration
         modules = []
@@ -121,6 +124,14 @@ class Runner(NeedMixin):
         if not modules:
             print "Nothing to do, exiting."
             return
+
+        # remove parent module from child instance list
+        r = []
+        for k,instance in enumerate(instances):
+            if instance.get_name() == modules[0].get_name():
+                r.append(k)
+        for k in r:
+            instances.pop(k)
 
         # copy configuration
         isnew = []
@@ -138,9 +149,10 @@ class Runner(NeedMixin):
         self.ask_sudo_password(modules[0], capture=False)
         
         for module in modules:
-            module.pre_setup()
+            if hasattr(module, 'pre_setup'):
+                module.pre_setup()
 
-        # run deferred handlers
+        # child dependencies
         for module in modules:
             for instance in instances:
                 # NOTE: packages() returns instances spawned from caller
@@ -148,13 +160,16 @@ class Runner(NeedMixin):
                 packages = child.packages()
                 child.packages_getset(packages)
                 #child.run_deferred('packages')
+                child.setup()
 
         for module in modules:
+            packages = module.packages()
+            module.packages_getset(packages)
             module.setup()
-            module.post_setup()
+            #module.post_setup()
 
         # run deferred handlers
-        self.restart(modules)
+        #self.restart(modules)
 
     def configure(self, needs):
         """ Prepare pre-requisitives a module has, before it can be setup """

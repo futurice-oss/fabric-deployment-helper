@@ -3,6 +3,9 @@ from soppa.contrib import *
 class Git(Soppa):
     branch = 'master'
 
+    def setup(self):
+        self.sudo('mkdir -p {packages_path}')
+
     def fetch(self, repository, dest):
         with self.cd(dest):
             self.sudo('git pull {repository}'.format(repository=repository))

@@ -9,6 +9,9 @@ class Pip(Soppa):
     _dirhashes = {}
 
     def setup(self):
+        self.sudo('mkdir -p {packages_path}')
+        self.sudo('mkdir -p {packages_to}')
+
         if not self.linux.binary_exists('pip'):
             self.install_pip()
 

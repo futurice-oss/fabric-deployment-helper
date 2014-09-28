@@ -2,7 +2,7 @@ from soppa.contrib import *
 
 
 class Rsync(Soppa):
-    deploy_group='www-data'
+    deploy_group = 'www-data'
 
     def rsync_target(self):
         fmt = self.fmt('{env.user}@{host}:')

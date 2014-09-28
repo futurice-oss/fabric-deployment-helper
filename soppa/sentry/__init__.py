@@ -8,6 +8,7 @@ class Sentry(Soppa):
     django_settings = 'conf'
     project = 'sentry'
     servername = 'sentry.dev'
+    path = '{basepath}'
 
     def setup(self):
         self.virtualenv.setup()

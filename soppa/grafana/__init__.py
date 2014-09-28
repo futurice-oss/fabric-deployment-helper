@@ -1,11 +1,12 @@
 from soppa.contrib import *
 
 class Grafana(Soppa):
-    url = 'http://grafanarel.s3.amazonaws.com/grafana-1.5.3.tar.gz'
+    url = 'http://grafanarel.s3.amazonaws.com/grafana-1.8.0.tar.gz'
     web_host = 'grafana.dev'
     project = 'grafana'
 
     def setup(self):
+        self.elasticsearch.setup()
         # self.package.get_file(url, dest)
         # - normal file download, ensures dest= exists
         # self.package.get_file(url, dest)

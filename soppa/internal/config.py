@@ -3,6 +3,7 @@ import copy
 import collections
 from soppa.internal.tools import generate_config
 from soppa.internal.mixins import ReleaseMixin
+from pprint import pprint as pp
 
 def load(path):
     c = Config(path=path)
@@ -12,14 +13,18 @@ class Config(object):
     """ Main configuration in INI format
     - Has custom list-formatting support
     """
-    def __init__(self, path='config.ini', parser=None, allow_no_value=True):
+    def __init__(self, path=None, parser=None, allow_no_value=True):
         self.path = path
         self.c = parser or ConfigParser.SafeConfigParser(allow_no_value=allow_no_value)
 
     def read(self):
+        if not self.path:
+            return
         self.c.read(self.path)
 
     def save(self):
+        if not self.path:
+            return
         with open(self.path, 'wb') as f:
             self.c.write(f)
 
@@ -77,8 +82,8 @@ class Config(object):
 
         self.save()
 
-def update_config(cls, path='config.ini'):
-    import os
+import os
+def update_config(cls, path=None, ctx={}):
     from soppa.jinja import Jinja
     # TODO: better way to temporarily patch values
     original_value = Jinja.jinja_undefined
@@ -86,11 +91,10 @@ def update_config(cls, path='config.ini'):
     os.environ['DRYRUN'] = '1'
 
     c = Config(path=path)
+    #instance = cls(ctx)
+    #config = c.values().get(instance.get_name(), {})
 
-    instance = cls()
-    config = c.values().get(instance.get_name(), {})
-
-    instance = cls(config)
+    instance = cls(ctx)
     instance.setup()
 
     gl_default = generate_config(instance)
@@ -102,14 +106,16 @@ def update_config(cls, path='config.ini'):
     c.update('globals', gl_final)
 
     instances = instance.log.get_action_instances()
-    # ensure main instance is included
+    instances_child = instances
+    instances_configuration = instances
+    # ensure main instance is included in configuration
     if not any([isinstance(k, type(instance)) for k in instances]):
-        instances.append(instance)
+        instances_configuration.append(instance)
 
-    for instance in instances:
+    for instance in instances_configuration:
         data = generate_config(instance)
         c.update(instance.get_name(), data)
 
     Jinja.jinja_undefined = original_value
     os.environ.pop('DRYRUN', False)
-    return instances, c.values()
+    return instances_child, c.values()

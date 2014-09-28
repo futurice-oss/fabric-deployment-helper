@@ -47,7 +47,6 @@ class MetaClass(type):
 
             if dry_run and is_api_method(fun.__name__):
                 result = NoOp()
-                print '[{0}]'.format(env.host_string), '{0}.{1}:'.format(self, fun.__name__), args,kwargs
                 self.root.log.add_action([self, fun.__name__, args, kwargs])
             else:
                 result = fun(self, *args, **kwargs)
@@ -172,8 +171,8 @@ class ReleaseMixin(object):
     host = 'localhost'#TODO:for?
 
     www_root = '/srv/www/'
+    packages_path = '{www_root}packages/'
     basepath = '{www_root}{project}/'
-    packages_path = '{basepath}packages/'
     path = '{basepath}www/'
 
 class NeedMixin(object):
@@ -400,7 +399,7 @@ class DirectoryMixin(object):
         """
         Files uploaded to {path} will be lost on symlink; copy prior to that over to {release_path}
         """
-        for name,data in self.log.data['hosts'][env.host_string].iteritems():
+        for name,data in self.log.data.get('hosts', {}).get(env.host_string, {}).iteritems():
             for key in data.keys():
                 for k, action in enumerate(data[key]):
                     target = action.get('target')
