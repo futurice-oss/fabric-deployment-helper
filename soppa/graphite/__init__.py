@@ -14,7 +14,7 @@ class Graphite(Soppa):
         self.virtualenv.setup()
 
         self.sudo('mkdir -p {path}')
-        self.sudo('chown -R {deploy_user} {path}')
+        self.sudo('chown -R {user} {path}')
 
         with self.cd('{path}conf/'):
             self.up('carbon.conf', '{path}conf/carbon.conf')
@@ -22,7 +22,7 @@ class Graphite(Soppa):
             if not self.exists('graphite.wsgi'):
                 self.sudo('cp graphite.wsgi.example graphite.wsgi')
         self.up('local_settings.py', '{pathweb}')
-        self.sudo('chown {deploy_user} {pathweb}local_settings.py')
+        self.sudo('chown {user} {pathweb}local_settings.py')
 
         with self.virtualenv.activate(), self.cd('{pathweb}'):
             self.sudo('python manage.py syncdb --noinput')

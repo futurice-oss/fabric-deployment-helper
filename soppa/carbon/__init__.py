@@ -5,7 +5,7 @@ class Carbon(Soppa):
 
     def setup(self):
         self.sudo('mkdir -p {path}')
-        self.sudo('chown -R {deploy_user} {path}')
+        self.sudo('chown -R {user} {path}')
 
         with self.cd('{path}conf/'):
             self.up('carbon.conf', '{path}conf/carbon.conf')

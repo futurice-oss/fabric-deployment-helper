@@ -27,7 +27,7 @@ def osx():
     env.use_sudo = True
     env.user = os.environ['USER']
     env.owner = env.user
-    env.deploy_user = env.owner
+    env.user = env.owner
     env.deploy_group = 'wheel'
     env.local_deployment = True
 

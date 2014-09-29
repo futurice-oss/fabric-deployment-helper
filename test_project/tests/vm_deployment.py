@@ -20,7 +20,7 @@ class DjangoDeployTestCase(BaseSuite):
         config = dict(
             mysql_name='db',
             mysql_password=env.mysql_password,
-            deploy_user='root',
+            user='root',
             project='mysql',
         )
         roles = DEFAULT_ROLES
@@ -34,7 +34,7 @@ class DjangoDeployTestCase(BaseSuite):
             mysql_password=env.mysql_password,
             nginx_restart='always',
             project='helloworld',
-            deploy_user='root',
+            user='root',
         )
         roles = DEFAULT_ROLES
         recipe = [
@@ -45,7 +45,7 @@ class DjangoDeployTestCase(BaseSuite):
     def test_graphite(self):
         config = dict(
             remote_user='root',
-            deploy_user='root',
+            user='root',
             project='graphite',
             host='graphite.dev',
         )
@@ -73,7 +73,7 @@ class DjangoDeployTestCase(BaseSuite):
 class SingleTestCase(BaseSuite):
     def test_grafana(self):
         config=dict(
-            deploy_user='root',
+            user='root',
             project='grafana',
             host='grafana.dev',
         )
@@ -83,7 +83,7 @@ class SingleTestCase(BaseSuite):
     def test_uwsgi(self):
         config=dict(
             project = 'uwsgitest',
-            deploy_user='root',
+            user='root',
         )
         recipe = [dict(roles='*', modules=['soppa.uwsgi'])]
         Runner(config, {}, DEFAULT_ROLES, recipe).run()
@@ -95,7 +95,7 @@ class DeployTestCase(BaseSuite):
     def test_statsd(self):
         config = dict(
             project='statsd',
-            deploy_user='root',
+            user='root',
         )
         recipe = [dict(roles='*', modules=['soppa.statsd'])]
         Runner(config, {}, DEFAULT_ROLES, recipe).run()
@@ -103,7 +103,7 @@ class DeployTestCase(BaseSuite):
     def test_sentry(self):
         config = dict(
             project='sentry',
-            deploy_user='root',
+            user='root',
             sentry_servername='sentry.dev',
             postgres_name='sentry',
             postgres_user='sentry',
@@ -114,14 +114,14 @@ class DeployTestCase(BaseSuite):
 
     def test_nginx(self):
         config = dict(
-            deploy_user='root',
+            user='root',
         )
         recipe = [dict(roles='*', modules=['soppa.nginx'])]
         Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
     def test_supervisor(self):
         config = dict(
-            deploy_user='root',
+            user='root',
         )
         recipe = [dict(roles='*', modules=['soppa.supervisor'])]
         Runner(config, {}, DEFAULT_ROLES, recipe).run()

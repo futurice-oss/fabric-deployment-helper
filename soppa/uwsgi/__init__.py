@@ -17,7 +17,7 @@ class Uwsgi(Soppa):
         self.virtualenv.setup()
 
         self.sudo('mkdir -p {conf_dir}vassals/')
-        self.sudo('chown -fR {root.deploy_user} {root.basepath}config/')
+        self.sudo('chown -fR {root.user} {root.basepath}config/')
 
         self.action('up', 'uwsgi.ini', '{conf_dir}vassals/', handler=['uwsgi.restart'])
 
@@ -33,5 +33,5 @@ class Uwsgi(Soppa):
 
     def cmd_start(self):
         with self.virtualenv.activate():
-            self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.deploy_user} --gid {root.deploy_group} --daemonize {root.basepath}logs/{root.project}-emperor.log')
+            self.sudo('uwsgi --emperor {conf_dir}vassals --uid {root.user} --gid {root.deploy_group} --daemonize {root.basepath}logs/{root.project}-emperor.log')
 

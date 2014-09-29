@@ -20,7 +20,7 @@ from soppa.ingredients import *
 def graphite_deploy():
     config = dict(
         project='graphite',
-        deploy_user='root',
+        user='root',
         host='graphite.dev',
     )
     roles = dict(all=dict(hosts=['vm']))

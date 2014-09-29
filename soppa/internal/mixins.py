@@ -164,7 +164,7 @@ class ApiMixin(object):
         return self.template.up(*upload.args, context=self.__dict__)
 
 class ReleaseMixin(object):
-    deploy_user = os.environ.get('USER', 'root')
+    user = os.environ.get('USER', 'root')
     deploy_group = 'www-data'
     deploy_os = 'debian'
     project = None
@@ -376,7 +376,7 @@ class DirectoryMixin(object):
         return self.fmt('{basepath}releases/{time}/')
 
     def ownership(self, owner=None):
-        self.sudo('chown -fR {owner} {basepath}', owner=owner or self.deploy_user)
+        self.sudo('chown -fR {owner} {basepath}', owner=owner or self.user)
 
     def dirs(self):
         self.sudo('mkdir -p {www_root}dist/')

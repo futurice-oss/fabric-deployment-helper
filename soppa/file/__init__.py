@@ -13,7 +13,7 @@ class File(Soppa):
 
     def set_setting(self, filepath, text, ftype=None, backup=False, su=True, user=None):
         """ add setting 'text' to 'filepath', if not there """
-        user = user or self.deploy_user
+        user = user or self.user
         filepath = self.fmt(filepath)
         text = self.fmt(text)
         backup_file = filepath + '.bak'

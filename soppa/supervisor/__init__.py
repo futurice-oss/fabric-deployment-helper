@@ -8,7 +8,7 @@ class Supervisor(Soppa):
     """
     supervisor_conf_dir = '/etc/supervisor/conf.d/'
     supervisor_opt = '-c "/etc/supervisord.conf"'
-    supervisor_user = '{root.deploy_user}'
+    supervisor_user = '{root.user}'
 
     def setup(self):
         self.sudo('mkdir -p {supervisor_conf_dir}')
