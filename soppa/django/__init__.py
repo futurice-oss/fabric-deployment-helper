@@ -8,7 +8,7 @@ class Django(Soppa, DirectoryMixin):
         self.virtualenv.setup()
         self.nodejs.setup()
 
-    def hook_post(self):
+    def setup_post(self):
         self.set_dsm(self.settings)
 
         with settings(warn_only=True):# assumes assetgen
@@ -47,7 +47,7 @@ class Django(Soppa, DirectoryMixin):
 
     def admin(self, args, standalone=False):
         with self.virtualenv.activate(), self.cd(self.path):
-            return self.run('django-admin.py {args}'.format(args=args))
+            return self.sudo('django-admin.py {args}'.format(args=args))
 
     def database_env(self, django_settings=None):
         django_settings = self.fmt(django_settings or self.settings)

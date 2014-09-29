@@ -93,7 +93,7 @@ class ApiMixin(object):
     def run(self, command, **kwargs):
         if env.local_deployment:
             return self.local(command, **kwargs)
-        if kwargs.get('use_sudo'):
+        if kwargs.get('user'):
             return self.sudo(command, **kwargs)
         else:
             return fabric_run(self.fmt(command, **kwargs), **self._expects(kwargs, self.run_expect))
@@ -376,24 +376,23 @@ class DirectoryMixin(object):
         return self.fmt('{basepath}releases/{time}/')
 
     def ownership(self, owner=None):
-        owner = owner or self.deploy_user
-        self.sudo('chown -fR {owner} {basepath}', owner=owner)
+        self.sudo('chown -fR {owner} {basepath}', owner=owner or self.deploy_user)
 
     def dirs(self):
         self.sudo('mkdir -p {www_root}dist/')
         self.sudo('mkdir -p {basepath}{packages,releases/default/,media,static,dist,logs,config/vassals/,pids,cdn}')
-        self.run('mkdir -p {}'.format(self.release_path))
+        self.sudo('mkdir -p {}'.format(self.release_path))
         if not self.exists(self.path):
             with self.cd(self.basepath):
-                self.run('ln -s {basepath}releases/default www.new; mv -T www.new www')
+                self.sudo('ln -s {basepath}releases/default www.new; mv -T www.new www')
 
     def symlink(self):
         """ mv is atomic op on unix; allows seamless deploy """
         with self.cd(self.basepath):
             if self.operating.is_linux():
-                self.run('ln -s {} www.new; mv -T www.new www'.format(self.release_path.rstrip('/')))
+                self.sudo('ln -s {} www.new; mv -T www.new www'.format(self.release_path.rstrip('/')))
             else:
-                self.run('rm -f www && ln -sf {} www'.format(self.release_path.rstrip('/')))
+                self.sudo('rm -f www && ln -sf {} www'.format(self.release_path.rstrip('/')))
 
     def copy_path_files_to_release_path(self):
         """
@@ -407,7 +406,7 @@ class DirectoryMixin(object):
                         if self.path in target:
                             release_target = target.replace(self.path, self.release_path)
                             reldir = os.path.dirname(release_target)
-                            self.run('mkdir -p {}; cp {} {}'.format(reldir, target, release_target))
+                            self.sudo('mkdir -p {}; cp {} {}'.format(reldir, target, release_target))
 
     def setup_need(self, instance):
         """ Ensures module.setup() is run only once per-host """

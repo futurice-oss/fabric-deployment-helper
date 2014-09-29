@@ -11,7 +11,7 @@ class Virtualenv(Soppa):
 
     def setup(self):
         if not self.exists(self.virtualenv_path):
-            self.run('virtualenv'
+            self.sudo('virtualenv'
                  ' --extra-search-dir={pip.packages_to}'
                  ' --prompt="({root.project})"'
                  ' {virtualenv_path}')

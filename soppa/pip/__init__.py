@@ -69,8 +69,9 @@ class Pip(Soppa):
               ' -r {requirements}', requirements=requirements,
               packages_path=packages_path))
 
-    def install_packages_from_file(self, filename, envflags=[], flags=[]):
-        self.run(self.fmt('{envflags} pip install'
+    def install_packages_from_file(self, filename, envflags=[], flags=[], use_sudo=False):
+        fn = self.sudo if use_sudo else self.run
+        fn(self.fmt('{envflags} pip install'
             ' -f file://{packages_to}'
             ' -r {filename}'
             ' --no-index {flags}',
@@ -88,7 +89,7 @@ class Pip(Soppa):
 
     def install_packages_global(self, packages=[]):
         filename = self.upload_packages_to_install_as_file(packages)
-        self.install_packages_from_file(filename, flags=['--upgrade'])
+        self.install_packages_from_file(filename, flags=['--upgrade'], use_sudo=True)
 
     def install_packages_venv(self, packages=[]):
         """ Installs Python packages

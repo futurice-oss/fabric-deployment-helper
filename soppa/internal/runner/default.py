@@ -1,4 +1,4 @@
-import os, copy, time
+import os, copy, time, getpass
 from pprint import pprint as pp
 import itertools
 
@@ -145,8 +145,6 @@ class Runner(NeedMixin):
         if any(isnew):
             raise Exception("""NOTICE: Default Configuration generated into {}.
             Review settings and configure any changes. Next run is live""".format('$local_conf_path'))
-
-        self.ask_sudo_password(modules[0], capture=False)
         
         for module in modules:
             if hasattr(module, 'pre_setup'):

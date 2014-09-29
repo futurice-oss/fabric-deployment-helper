@@ -11,7 +11,7 @@ class Package(Soppa):
         download = '{}{}'.format(self.root.packages_path, self.id(url))
         if not self.exists(download):
             self.wget(url, download)
-        self.run('mkdir -p {dest}', dest=dest)
+        self.sudo('mkdir -p {dest}', dest=dest)
         if self.package_in_dir(download, self.package_name(url)):
             self.sudo("tar --strip-components=1 -zxf {} -C {}".format(download, dest))
         else:

@@ -48,6 +48,6 @@ class Remote(Soppa):
         self.put('fabfile.py', '/tmp/')
 
         with self.cd('/tmp'):
-            self.run('python -c "from fabfile import *; execute({cmd});"'.format(cmd=cmd))
+            self.sudo('python -c "from fabfile import *; execute({cmd});"'.format(cmd=cmd))
 
 remote_task, remote = register(Remote)
