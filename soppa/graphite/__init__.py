@@ -36,8 +36,10 @@ class Graphite(Soppa):
 
         self.sudo('update-rc.d -f carbon remove')#TODO: generalize as OS.init_remove('carbon')
 
-    def configure_nginx(self):
-        self.action('up', 'graphite_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
+        self.action('up', 'graphite_nginx.conf', '{nginx_conf_dir}',
+                handler=['nginx.restart'],
+                when=lambda x: x.soppa_web_server=='nginx')
 
-    def configure_supervisor(self):
-        self.action('up', 'graphite_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
+        self.action('up', 'graphite_supervisor.conf', '{supervisor_conf_dir}',
+                handler=['supervisor.restart'],
+                when=lambda x: x.soppa_proc_daemon=='supervisor')

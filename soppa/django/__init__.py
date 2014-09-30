@@ -1,7 +1,7 @@
 from soppa.contrib import *
 from soppa.internal.mixins import DirectoryMixin
 
-class Django(Soppa, DirectoryMixin):
+class Django(DirectoryMixin, Soppa):
     settings = '{project}.settings.prod'
 
     def setup(self):

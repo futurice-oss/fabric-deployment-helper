@@ -98,7 +98,7 @@ class Runner(NeedMixin):
         config_path = '{}{}'.format(module_classes[0]().soppa.local_conf_path, DEFAULT_INI_NAME)
         # TODO: load any configuration files, or if none specified, use default configuration
         # default configuration
-        instances, values = update_config(module_classes[0], path=None, ctx=config)
+        all_instances, values = update_config(module_classes[0], path=None, ctx=config)
 
         # flatten {namespace}_key=>val, to be picked up correctly within modules
         flatval = {}
@@ -118,8 +118,12 @@ class Runner(NeedMixin):
 
         # instantiate with configuration
         modules = []
+        instances = []
         for module in module_classes:
             modules.append(module(config))
+        # update_config instances do not have the whole configuration spectrum; re-initialize
+        for instance in all_instances:
+            instances.append(getattr(modules[0], instance.get_name()))
 
         if not modules:
             print "Nothing to do, exiting."
@@ -149,9 +153,7 @@ class Runner(NeedMixin):
             if hasattr(module, 'pre_setup'):
                 module.pre_setup()
 
-        # child dependencies
-        print modules
-        print instances
+        # child dependencies: packaging
         for module in modules:
             for instance in instances:
                 # default settings
@@ -165,12 +167,17 @@ class Runner(NeedMixin):
                 path = os.path.join(child.soppa.abs_conf_path, child.get_name(), '')
                 packages = child.packages(path=path)
                 child.packages_getset(packages)
-
-                child.setup()
-
-        for module in modules:
+            # parent dependencies: packaging
             packages = module.packages()
             module.packages_getset(packages)
+
+        # child dependencies: setup
+        for module in modules:
+            for instance in instances:
+                instance.setup()
+
+        # parent: setup
+        for module in modules:
             module.setup()
 
         # run deferred handlers

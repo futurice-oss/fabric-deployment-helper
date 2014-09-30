@@ -91,8 +91,6 @@ def update_config(cls, path=None, ctx={}):
     os.environ['DRYRUN'] = '1'
 
     c = Config(path=path)
-    #instance = cls(ctx)
-    #config = c.values().get(instance.get_name(), {})
 
     instance = cls(ctx)
     instance.setup()
@@ -106,8 +104,10 @@ def update_config(cls, path=None, ctx={}):
     c.update('globals', gl_final)
 
     instances = instance.log.get_action_instances()
+    instances += instance.get_default_modules()
     instances_child = instances
     instances_configuration = instances
+
     # ensure main instance is included in configuration
     if not any([isinstance(k, type(instance)) for k in instances]):
         instances_configuration.append(instance)
@@ -118,4 +118,11 @@ def update_config(cls, path=None, ctx={}):
 
     Jinja.jinja_undefined = original_value
     os.environ.pop('DRYRUN', False)
-    return instances_child, c.values()
+
+    # remove duplicates
+    r = []
+    for instance in instances_child:
+        if not any([isinstance(k, type(instance)) for k in r]):
+            r.append(instance)
+
+    return r, c.values()

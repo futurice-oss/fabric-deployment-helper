@@ -167,6 +167,19 @@ class ReleaseMixin(object):
     basepath = '{www_root}{project}/'
     path = '{basepath}www/'
 
+    # defaults; TODO: rather, prompt for these on initial configuration?
+    soppa_proc_daemon = 'supervisor'
+    soppa_web_server = 'nginx'
+    soppa_db_server = 'postgres'
+
+    def get_default_modules(self):
+        i = []
+        if self.soppa_proc_daemon:
+            i.append(getattr(self, self.soppa_proc_daemon))
+        if self.soppa_web_server:
+            i.append(getattr(self, self.soppa_web_server))
+        return i
+
 class NeedMixin(object):
     
     def get_needs(self, as_str=False):
@@ -352,7 +365,16 @@ class FormatMixin(object):
                                 kwargs.setdefault(key, '')
             if '{self.' in string:
                 kwargs['self'] = self
-            string = string.format(**kwargs)
+            try:
+                string = string.format(**kwargs)
+            except KeyError, e:
+                if os.environ.get('DRYRUN', False):
+                    string = 'dryrun'
+                else:
+                    raise
+            except AttributeError, e:
+                print 'FMT failed for: {} with {}'.format(string, kwargs)
+                raise
         return string
 
 class DirectoryMixin(object):

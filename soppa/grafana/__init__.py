@@ -15,5 +15,6 @@ class Grafana(Soppa):
 
         self.up('config.js', '{path}')
 
-    def configure_nginx(self):
-        self.action('up', 'grafana_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
+        self.action('up', 'grafana_nginx.conf', '{nginx_conf_dir}',
+                handler=['nginx.restart'],
+                when=lambda x: x.soppa_web_server=='nginx')

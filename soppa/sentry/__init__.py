@@ -12,17 +12,20 @@ class Sentry(Soppa):
 
     def setup(self):
         self.virtualenv.setup()
+        self.postgres.setup()
 
         self.sudo('mkdir -p {www_root}htdocs')
-
         self.up('conf.py', '{path}')
 
-    def configure_nginx(self):
-        self.action('up', 'sentry_nginx.conf', '{nginx_conf_dir}', handler=['nginx.restart'])
+        self.action('up', 'sentry_nginx.conf', '{nginx_conf_dir}',
+                handler=['nginx.restart'],
+                when=lambda x: x.soppa_web_server=='nginx')
 
-    def configure_apache(self):
-        self.action('up', 'sentry_apache.conf', '{apache_dir}sites-enabled/', handler=['apache.restart'])
+        self.action('up', 'sentry_apache.conf', '{apache_dir}sites-enabled/',
+                handler=['apache.restart'],
+                when=lambda x: x.soppa_web_server=='apache')
 
-    def configure_supervisor(self):
-        self.action('up', 'sentry_supervisor.conf', '{supervisor_conf_dir}', handler=['supervisor.restart'])
+        self.action('up', 'sentry_supervisor.conf', '{supervisor_conf_dir}',
+                handler=['supervisor.restart'],
+                when=lambda x: x.soppa_proc_daemon=='supervisor')
 

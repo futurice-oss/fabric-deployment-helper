@@ -126,12 +126,12 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
     def action(self, name, *args, **kwargs):
         """
         Action allows wrapping commands into a context that oversees the method flow
-        - given=[]; only execute, if True
+        - when=[]; execute when True
         - handlers=[] -- ['apache.restart']; run handlers on commands
         """
         method = getattr(self, name)
-        given = kwargs.pop('given', None)
-        if given and not given(self):
+        when = kwargs.pop('when', None)
+        if when and not when(self):
             # TODO: log.debug()
             rs = {}
             rs['instance'] = method

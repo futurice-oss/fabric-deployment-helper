@@ -12,6 +12,7 @@ class Git(Soppa):
             self.sudo('git pull {repository}'.format(repository=repository))
 
     def source(self, to, branch=None):
+        """ Git Archive the current project, and upload it as a new release """
         with tempfile.NamedTemporaryFile(delete=True, suffix='tar.gz') as f:
             self.local('git archive --format=tar {branch} | gzip > {filename}'\
                     .format(branch=branch or self.branch, filename=f.name))
