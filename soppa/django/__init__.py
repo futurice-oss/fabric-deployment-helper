@@ -8,6 +8,8 @@ class Django(Soppa, DirectoryMixin):
         self.virtualenv.setup()
         self.nodejs.setup()
 
+        self.git.source(to=self.release_path)
+
     def setup_post(self):
         self.set_dsm(self.settings)
 

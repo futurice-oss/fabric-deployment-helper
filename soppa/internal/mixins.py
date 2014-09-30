@@ -444,5 +444,9 @@ class NoOp(object):
         return self
     def next(self):
         raise StopIteration
+    def __getitem__(self, index):
+        return self
+    def __setitem__(self, index, value):
+        pass
     def __unicode__(self):
         return ""
