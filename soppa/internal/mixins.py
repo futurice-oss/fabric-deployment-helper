@@ -28,22 +28,15 @@ class MetaClass(type):
                     todoTestingPass=1
                     return getattr(self, metname)()
                 return False
-            dry_run = os.environ.get('DRYRUN', False)
-            if fun.__name__=='setup':
-                # (for templating) namespace variables from all known needs to self
-                for instance in self.get_needs():
-                    namespaced_values = fmt_namespaced_values(instance, get_namespaced_class_values(instance))
-                    for k,v in namespaced_values.iteritems():
-                        if not hasattr(self, k):
-                            setattr(self, k, v)
-
-            #pre_fn_name = 'pre_{}'.format(fun.__name__)
-            run_fn_behaviour('pre', fun.__name__)
 
             def is_api_method(name):
                 if name in API_METHODS:
                     return True
                 return False
+
+            dry_run = os.environ.get('DRYRUN', False)
+
+            run_fn_behaviour('pre', fun.__name__)
 
             if dry_run and is_api_method(fun.__name__):
                 result = NoOp()
@@ -51,7 +44,6 @@ class MetaClass(type):
             else:
                 result = fun(self, *args, **kwargs)
 
-            #post_fn_name = 'post_{}'.format(fun.__name__)
             run_fn_behaviour('post', fun.__name__)
 
             return result
@@ -225,8 +217,16 @@ class NeedMixin(object):
         cls_name = name.split('.')[-1]
         import_name = copy.copy(name)
         if '.' not in name:
-            import_name = '{}.{}'.format(DEFAULT_NS, name)
-        module = import_string(import_name)
+            module = None
+            for ns in DEFAULT_NS:
+                import_name = '{}.{}'.format(ns, name)
+                try:
+                    module = import_string(import_name)
+                    break
+                except Exception, e:
+                    pass
+        else:
+            module = import_string(import_name)
         cls = self.match_module_to_class(module, cls_name)
         return getattr(module, cls)
 
@@ -283,15 +283,20 @@ class NeedMixin(object):
     def _load_need(self, key, alias=None, ctx={}):
         return self.get_and_load_need(self.find_need(key), alias=alias, ctx=ctx)
 
+    def is_installed_module(self, name):
+        return name in [k.split('.')[-1] for k in self.soppa.installed_modules]
+
     def __getattr__(self, key):
         try:
             result = self.__dict__[key]
         except KeyError, e:
             # lazy-load modules
-            if not key.startswith('__'):
+            if not key.startswith('__') and self.is_installed_module(key):
                 instance = self._load_need(key, alias=None, ctx={'args':self.args, 'kwargs': self.kwargs})
                 name = key.split('.')[-1]
                 setattr(self, name, instance)
+                # NoOp catches method calls only
+                self.root.log.add_action([instance, '__init__', [], {}])
                 return instance
             raise AttributeError(e)
         return result

@@ -16,6 +16,7 @@ from ..modd import ModD
 from ..mode import ModE
 from ..modf import ModF
 from ..modpack import ModPack
+SOPPA_DEFAULTS.installed_modules += ['moda','modb','modc','modd','mode','modf','modpack',]
 
 class BaseSuite(unittest.TestCase):
     pass
@@ -247,8 +248,10 @@ class ModuleTest(BaseSuite):
         md = ModD(dict(modd_modf_shout='woof'))
         self.assertEquals(md.modf.modf_shout, 'woof')
         self.assertEquals(md.modf.shout, 'woof')
+
         md = ModD(dict(modf_shout='bark', modd_modf_shout='woof'))
         self.assertEquals(md.modf.modf_shout, 'woof')
+
         self.assertEquals(md.modf.shout, 'woof')
         md = ModD(dict(modd_modf_shout='woof', modf_shout='bark'))
         self.assertEquals(md.modf.modf_shout, 'woof')
@@ -301,7 +304,8 @@ class WaterTest(BaseSuite):
 class ConfigTest(BaseSuite):
     def test_reading(self):
         instances, values = update_config(Django, path=None, ctx={})
-        self.assertTrue(all(k.get_name() in ['django','virtualenv','nodejs'] for k in instances))
+        instance_names = [k.get_name() for k in instances]
+        self.assertTrue(all(k in instance_names for k in ['django','virtualenv','nodejs']))
         self.assertEquals(values['globals']['path'], u'/srv/www/django/www/')
         self.assertTrue('django' in values['nodejs']['nodejs_binary_dir'])
 

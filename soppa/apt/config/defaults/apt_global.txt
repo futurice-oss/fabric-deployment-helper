@@ -11,3 +11,4 @@ checkinstall
 libpcre3-dev
 libsqlite3-dev
 libjpeg8-dev
+rsync

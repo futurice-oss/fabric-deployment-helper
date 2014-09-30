@@ -1,7 +1,9 @@
 from soppa.contrib import *
 
 class Linux(Soppa):
+
     def setup(self):
+        self.apt.setup()
         self.remote.setup()
 
     def swap_on(self):

@@ -114,7 +114,7 @@ class Runner(NeedMixin):
                     flatval.setdefault(key, v2)
         # TODO: load only config-files specified in deployment-recipe
         flatval.update(config)
-        config=flatval
+        config = flatval
 
         # instantiate with configuration
         modules = []
@@ -136,9 +136,8 @@ class Runner(NeedMixin):
         # copy configuration
         isnew = []
         cfg = {}
+        isnew.append(self.configure(instances))
         for module in modules:
-            needs = module.get_needs()
-            isnew.append(self.configure(needs))
             isnew.append(self.configure([module]))
             cfg.update(generate_config(module))
 
@@ -151,23 +150,31 @@ class Runner(NeedMixin):
                 module.pre_setup()
 
         # child dependencies
+        print modules
+        print instances
         for module in modules:
             for instance in instances:
+                # default settings
                 # NOTE: packages() returns instances spawned from caller
                 child = getattr(module, instance.get_name())
                 packages = child.packages()
                 child.packages_getset(packages)
-                #child.run_deferred('packages')
+
+                # project settings
+                child = getattr(module, instance.get_name())
+                path = os.path.join(child.soppa.abs_conf_path, child.get_name(), '')
+                packages = child.packages(path=path)
+                child.packages_getset(packages)
+
                 child.setup()
 
         for module in modules:
             packages = module.packages()
             module.packages_getset(packages)
             module.setup()
-            #module.post_setup()
 
         # run deferred handlers
-        #self.restart(modules)
+        self.restart(modules)
 
     def configure(self, needs):
         """ Prepare pre-requisitives a module has, before it can be setup """

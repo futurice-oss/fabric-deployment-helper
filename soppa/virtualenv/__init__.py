@@ -10,6 +10,7 @@ class Virtualenv(Soppa):
     virtualenv_path = '{root.basepath}venv/'
 
     def setup(self):
+        self.pip.setup()
         if not self.exists(self.virtualenv_path):
             self.sudo('virtualenv'
                  ' --extra-search-dir={pip.packages_to}'

@@ -36,6 +36,7 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         self.kwargs = kwargs
         self.kwargs['ctx'] = ctx
         self.log = DeployLog()
+        self.context = {}
         #self.action('packages', given=lambda self: not self.is_deferred('packages'))
 
         # Apply all inherited variables to have them in __dict__ scope
@@ -68,14 +69,23 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         context = {}
         # parent variables
         context.update(**kwargs.get('ctx_parent', {}))
+        if kwargs.get('ctx_parent'):
+            parent_context = kwargs['ctx_parent']['parent_instance'].context
+            # do not pass parent variables containing own namespace
+            # eg. x_y + p_x_y passed for parent p; x should not receive x_y, for p_x_y to be in effect
+            parent_context_clean = {}
+            for k,v in parent_context.iteritems():
+                if not k.startswith(self.get_name()):
+                    parent_context_clean.setdefault(k, v)
+            context.update(**parent_context_clean)
         # instance variables
         context.update(**kwargs.get('ctx', {}))
+        self.context = context
         if any([key in self.reserved_keys for key in context.keys()]):
             raise Exception("Reserved keys used")
 
         # set initial state based on context
         for k,v in context.iteritems():
-            #if not self.has_need(k) and k not in [self.get_name()]:
             if k not in [self.get_name()]:
                 self.apply_value(k, v)
 
@@ -100,6 +110,12 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         for k,v in fmt_namespaced_values(self, namespaced_values).iteritems():
             if k not in keys:
                 self.apply_value(k, v)
+
+        # Update fabric env
+        fabric_keys = ['user', 'password', 'use_sudo']
+        for key in fabric_keys:
+            if key in context.keys():
+                setattr(env, key, context[key])
 
     def is_deferred(self, handler):
         for rule in self.defer_handlers:
@@ -179,9 +195,9 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
             self._CACHE[key] = PackageManager(self)
         return self._CACHE[key]
 
-    def packages(self):
+    def packages(self, path=None):
         pm = self.packman()
-        return pm.get_packages()
+        return pm.get_packages(path=path)
 
     def packages_getset(self, packages):
         pm = self.packman()
@@ -207,17 +223,15 @@ class Soppa(ApiMixin, NeedMixin, ReleaseMixin, FormatMixin):
         return result
 
     def copy_configuration(self, recurse=False):
-        """ Prepare local copies of module configuration files. Does not overwrite existing files. """
+        """ Copy default module configuration files to project. Does not overwrite existing files. """
         if os.path.exists(self.module_conf_path()):
-            self.local('mkdir -p {0}'.format(self.local_module_conf_path()))
             with self.hide('output','warnings'), settings(warn_only=True):
                 if not self.local_module_conf_path().startswith(self.module_conf_path()):
-                    self.local('cp -Rn {0} {1}'.format(
-                        self.module_conf_path(),
+                    if not os.path.exists(self.local_module_conf_path()):
+                        self.local('mkdir -p {}'.format(self.local_module_conf_path()))
+                    self.local('cp -Rn {} {}'.format(
+                        self.module_path(),
                         self.local_module_conf_path(),))
-        if recurse:
-            for k,v in enumerate(self.get_needs()):
-                v.copy_configuration()
 
     def module_path(self):
         return here(instance=self)

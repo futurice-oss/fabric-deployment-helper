@@ -16,6 +16,7 @@ class Rsync(Soppa):
         self.sudo('mkdir -p {0}'.format(target))
         self.sudo('chgrp {0} {1}'.format(self.deploy_group, target))
         self.sudo('chmod -R g+w {0}'.format(target))
+        self.sudo('chown -R {} {}'.format(self.user, target))
         if hasattr(self, 'key_filename'):
             args += " -e 'ssh -i {0}'".format(self.key_filename[0])
         self.local('rsync -r {args} {source} {rsync_target}{target}',

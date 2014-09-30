@@ -1,42 +1,7 @@
 import os
 
 from soppa.contrib import *
-
-class PackageStorage(object):
-    def __init__(self):
-        self.already_added = []
-        self.register = []
-
-    def exists(self, name):
-        return (name in self.register)
-
-    def add(self, name):
-        if not name:
-            return
-        if self.exists(self.requirementFormat(name)):
-            self.already_added.append(name)
-            return
-        self.register.append(self.requirementFormat(name))
-
-    def requirementFormat(self, name):
-        return name
-
-    def rem(self, name):
-        try:
-            idx = self.all_names(lower=True).index(name.lower())
-            self.register.pop(idx)
-        except ValueError:
-            pass
-
-    def all_names(self, lower=True):
-        def fun(val):
-            if lower:
-                val = val.lower()
-            return val
-        return [fun(k[0]) for k in self.all()]
-
-    def all(self):
-        return self.register
+from soppa.internal.packagestorage import PackageStorage
 
 class PackageHandler(object):
     """ list of lists [ [name, version] ] of packages """
@@ -63,7 +28,7 @@ class PackageHandler(object):
                     path or self.path)
 
     def read(self, path=None):
-        target_path = os.path.join(self.defaults_conf_path(), path or self.path)
+        target_path = os.path.join(path or self.defaults_conf_path(), self.path)
         if not os.path.exists(target_path):
             return
         for k in open(target_path).readlines():
@@ -98,6 +63,7 @@ class PackageHandler(object):
     def get_installer(self):
         raise Exception("Not configured")
 
+
 class Apt(PackageHandler):
     path = 'apt_global.txt'
 
@@ -107,13 +73,19 @@ class Apt(PackageHandler):
     def install(self, packages):
         self.get_installer().install(packages)
 
-class Pip(PackageHandler):
+class PipHandler(PackageHandler):
+    def setup_manager(self):
+        if not self.get_installer().linux.binary_exists('pip'):
+            self.get_installer().install_pip()
+
+class Pip(PipHandler):
     path = 'requirements_global.txt'
 
     def get_installer(self):
         return getattr(self.need, 'pip')
 
     def install(self, packages):
+        self.setup_manager()
         self.get_installer().install_packages_global(packages)
 
 class PipVenv(Pip):
@@ -123,4 +95,5 @@ class PipVenv(Pip):
         return getattr(self.need, 'pip')
 
     def install(self, packages):
+        self.setup_manager()
         self.get_installer().install_packages_venv(packages)

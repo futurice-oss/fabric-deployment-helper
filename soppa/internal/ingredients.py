@@ -30,8 +30,10 @@ from soppa.uwsgi import *
 from soppa.vagrant import *
 from soppa.virtualenv import *
 
-def print_imports(module):
+def list_imports(module):
     d = here(fn=import_string(module).__file__)
-    installed_packages = [o for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))]
-    for k in installed_packages:
-        print "from soppa.0} import *".format(k)
+    return [o for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))]
+
+def print_imports(module):
+    for k in list_imports(module):
+        print "from soppa.{} import *".format(k)

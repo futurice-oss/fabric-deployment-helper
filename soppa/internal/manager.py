@@ -6,12 +6,14 @@ class PackageManager(object):
         self.instance = instance
         self._CACHE = {}
         self.handlers = []
-        self.storages = ['package','meta']#TODO: belongs in handler?
+        self.storages = ['package','meta']
 
-        for need in [self.instance] + self.instance.get_needs():
-            for name in self.instance.soppa.packmans:
-                handin = import_string(name)(need=need)
-                self.handlers.append(handin)
+        self.set_handler(instance)
+
+    def set_handler(self, instance):
+        for name in instance.soppa.packmans:
+            handin = import_string(name)(need=instance)
+            self.handlers.append(handin)
 
     def unique_handlers(self):
         key = 'unique_handlers'
@@ -19,7 +21,7 @@ class PackageManager(object):
             self._CACHE[key] = [import_string(name)(need=self.instance) for name in self.instance.soppa.packmans]
         return self._CACHE[key]
             
-    def get_packages(self):
+    def get_packages(self, path=None):
         """ Flatten packages into a single source of truth, ensuring needs do not override existing project dependencies.
         """
         rs = {k:{'meta':[], 'package':[]} for k in self.unique_handlers()}
@@ -30,7 +32,7 @@ class PackageManager(object):
             raise Exception('Unknown handler')
 
         for handler in self.handlers:
-            handler.read()
+            handler.read(path=path)
             for storage in self.storages:
                 for package in getattr(handler, storage).all():
                     existing_package_names = [handler.requirementName(k) for k in rs[handler_group(handler)][storage]]
@@ -46,7 +48,7 @@ class PackageManager(object):
         for handler, pkg in packages.iteritems():
             filepath = handler.target_need_conf_path()
             if not os.path.exists(os.path.dirname(filepath)):
-                self.instance.local('mkdir -p {0}'.format(os.path.dirname(filepath)))#TODO: elsewhere; Dir.ensure_exists(path)
+                self.instance.local('mkdir -p {}'.format(os.path.dirname(filepath)))#TODO: elsewhere; Dir.ensure_exists(path)
             if not os.path.exists(filepath):
                 handler.write(filepath, pkg)
 

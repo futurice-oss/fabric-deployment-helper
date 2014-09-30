@@ -120,7 +120,8 @@ class Pip(Soppa):
         path = '{path}dist/'
         self.sudo('mkdir -p {0}'.format(path))
         with self.cd(path):
-            self.sudo('wget -S https://bootstrap.pypa.io/get-pip.py')
+            self.sudo('rm -f get-pip.py')
+            self.sudo('wget -S https://bootstrap.pypa.io/get-pip.py --no-check-certificate')
             self.sudo('python get-pip.py --force --no-use-wheel')
 
     def system_package_path(self, name):

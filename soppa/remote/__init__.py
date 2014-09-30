@@ -10,7 +10,11 @@ class SilentEncoder(json.JSONEncoder):
             return None
 
 class Remote(Soppa):
-    runner_path = '{root.basepath}releases/runner.py'
+    runner_path = '{www_root}dist/runner.py'
+
+    def setup(self):
+        self.up('runner.py', self.runner_path)
+        self.sudo('chmod +x {0}'.format(self.runner_path))
 
     def to_json(self, data, cls=None):
         return json.dumps(data, encoding='utf-8', cls=cls, ensure_ascii=False, separators=(',',':'))
@@ -24,10 +28,6 @@ class Remote(Soppa):
             else:
                 self.sudo('python {runner_path} --cmd={cmd} --filename={sync_filename}')
         # TODO: cleanup created sync.json that remains
-
-    def setup(self):
-        self.up('runner.py', self.runner_path)
-        self.sudo('chmod +x {0}'.format(self.runner_path))
 
     def sync_local_fabric_env(self):
         """ Sync current fabric.env when running commands on a remote server
