@@ -1,7 +1,7 @@
 #!/bin/bash
 # http://wiki.nginx.org/InstallOptions
 MY=nginx
-curl http://nginx.org/download/nginx-1.5.13.tar.gz -o $MY.tar.gz
+curl http://nginx.org/download/nginx-1.7.6.tar.gz -o $MY.tar.gz
 mkdir $MY && tar -zxvf $MY.tar.gz -C $MY --strip-components 1  
 cd $MY
 ./configure \

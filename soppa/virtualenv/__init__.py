@@ -8,6 +8,7 @@ class Virtualenv(Soppa):
     Setup for http://www.virtualenv.org/en/latest/
     """
     virtualenv_path = '{root.basepath}venv/'
+    virtualenv_default_package = 'virtualenv==1.11.4'
 
     def setup(self):
         self.pip.setup()

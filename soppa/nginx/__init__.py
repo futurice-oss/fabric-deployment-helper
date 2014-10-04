@@ -20,9 +20,6 @@ class Nginx(Soppa):
             self.up('LaunchDaemons/nginx.plist', '/Library/LaunchDaemons/')
             self.sudo('chmod 0640 /Library/LaunchDaemons/nginx.plist')
             self.sudo('launchctl load /Library/LaunchDaemons/nginx.plist')
-            
-        if not self.exists('{path}conf/mime.types'):
-            self.sudo('cp {path}conf/mime.types.default {path}conf/mime.types')
 
         if not self.exists('{path}sbin/nginx'):
             self.up('nginx.bash', '/usr/src/')
@@ -30,6 +27,9 @@ class Nginx(Soppa):
                 if self.operating.is_osx():
                     self.sudo('brew install pcre')
                 self.sudo('bash nginx.bash')
+            
+        if not self.exists('{path}conf/mime.types'):
+            self.sudo('cp {path}conf/mime.types.default {path}conf/mime.types')
 
         self.action('up', 'nginx.conf', '{path}conf/', handler=['nginx.restart'])
 

@@ -91,6 +91,14 @@ class Pip(PipHandler):
 class PipVenv(Pip):
     path = 'requirements_venv.txt'
 
+    def setup_manager(self):
+        if not self.get_installer().linux.binary_exists('pip'):
+            self.get_installer().install_pip()
+        vmod = self.get_installer().virtualenv
+        if not vmod.exists(vmod.virtualenv_path):
+            self.get_installer().install_packages_global([vmod.virtualenv_default_package])
+            vmod.setup()
+
     def get_installer(self):
         return getattr(self.need, 'pip')
 

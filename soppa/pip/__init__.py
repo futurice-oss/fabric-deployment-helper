@@ -9,9 +9,10 @@ class Pip(Soppa):
     _dirhashes = {}
 
     def setup(self):
-        self.sudo('mkdir -p {packages_path}')
-        self.sudo('mkdir -p {packages_to}')
-
+        if not self.exists(self.packages_path):
+            self.sudo('mkdir -p {packages_path}')
+        if not self.exists(self.packages_to):
+            self.sudo('mkdir -p {packages_to}')
         if not self.linux.binary_exists('pip'):
             self.install_pip()
 
@@ -96,7 +97,7 @@ class Pip(Soppa):
         - side-effect: .distlib/ being created to HOME """
         filename = self.upload_packages_to_install_as_file(packages)
         with self.virtualenv.activate():
-            self.install_packages_from_file(filename, envflags=['HOME={packages_to}'])
+            self.install_packages_from_file(filename, envflags=['HOME={packages_to}'], use_sudo=True)
 
     def path_in_sync(self, path):
         # TODO: save directory-hash for future, instead of being run-specific

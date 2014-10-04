@@ -4,7 +4,7 @@ class NodeJS(Soppa):
     """
     Setup for https://pypi.python.org/pypi/nodeenv
     """
-    version = '0.10.29'
+    version = '0.10.32'
     binary_dir = '{root.basepath}venv/bin/'
     symlink_npm = ['lessc',]
 
