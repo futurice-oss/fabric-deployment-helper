@@ -13,6 +13,8 @@ from fabric.decorators import with_settings
 from fabric.operations import prompt as fabric_prompt
 # /FABRIC
 from soppa.internal.local import run as custom_run
+import invoke
+from invoke import run as invoke_run
 
 def get_methods(klass):
     return [k[0] for k in inspect.getmembers(klass, predicate=inspect.ismethod)]
@@ -92,7 +94,14 @@ class ApiMixin(object):
             return fabric_run(self.fmt(command, **kwargs), **self._expects(kwargs, self.run_expect))
 
     def local(self, command, **kwargs):
-        return fabric_local(self.fmt(command, **kwargs), **self._expects(kwargs, self.local_expect))
+        print "local",command
+        try:
+            rs = invoke_run(self.fmt(command, **kwargs))
+            rs.succeeded = not rs.failed
+        except invoke.exceptions.Failure as e:
+            print e
+            rs = NoOp()
+        return rs
 
     def put(self, local_path, remote_path, **kwargs):
         local_path = getattr(local_path, 'name', local_path)
