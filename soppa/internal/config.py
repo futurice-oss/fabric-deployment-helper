@@ -39,6 +39,7 @@ class Config(object):
         return c
 
     def read_fmt_value(self, v):
+        # ConfigParser return strings by default, and does not support lists.
         def list_fmt(v):
             if v.startswith('[') and v.endswith(']'):
                 v = copy.deepcopy(v)
@@ -46,9 +47,32 @@ class Config(object):
                 v = [k.replace('\n','') for k in v if k]
                 v = [k for k in v if k]
             return v
+        def boolean_fmt(v):
+            if v=='True':
+                v = True
+            elif v=='False':
+                v = False
+            return v
+        def float_fmt(v):
+            if not isinstance(v, basestring):
+                return v
+            try:
+                return float(v)
+            except ValueError:
+                return v
+        def int_fmt(v):
+            if not isinstance(v, basestring):
+                return v
+            try:
+                return int(v)
+            except ValueError:
+                return v
 
         def fmt(v):
             v = list_fmt(v)
+            v = boolean_fmt(v)
+            v = int_fmt(v)
+            v = float_fmt(v)
             return v
 
         return fmt(v)

@@ -6,12 +6,13 @@ from soppa.internal.tools import import_string, Upload, get_full_dict, get_names
 from soppa import *
 
 # FABRIC: import and prefix fabric functions into their own namespace to not inadvertedly use them
-from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put
+from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run, sudo as fabric_sudo, task as fabric_task, put as fabric_put, execute as fabric_execute, hide as fabric_hide, lcd as fabric_lcd, get as fabric_get, put as fabric_put, hide
 from fabric.contrib.files import exists as fabric_exists
 from fabric.context_managers import prefix as fabric_prefix, settings
 from fabric.decorators import with_settings
 from fabric.operations import prompt as fabric_prompt
 # /FABRIC
+from soppa.internal.local import run as custom_run
 
 def get_methods(klass):
     return [k[0] for k in inspect.getmembers(klass, predicate=inspect.ismethod)]
@@ -78,12 +79,12 @@ class ApiMixin(object):
         return {k:v for k,v in data.iteritems() if k in supported}
 
     def sudo(self, command, **kwargs):
-        if env.local_deployment:
+        if self.local_deployment:
             return self.local_sudo(command, **kwargs)
         return fabric_sudo(self.fmt(command, **kwargs), **self._expects(kwargs, self.sudo_expect))
 
     def run(self, command, **kwargs):
-        if env.local_deployment:
+        if self.local_deployment:
             return self.local(command, **kwargs)
         if kwargs.get('user'):
             return self.sudo(command, **kwargs)
@@ -95,7 +96,7 @@ class ApiMixin(object):
 
     def put(self, local_path, remote_path, **kwargs):
         local_path = getattr(local_path, 'name', local_path)
-        if env.local_deployment:
+        if self.local_deployment:
             return self.local_put(self.fmt(local_path), self.fmt(remote_path), **kwargs)
         if env.get('use_sudo'):
             kwargs['use_sudo'] = True
@@ -103,7 +104,7 @@ class ApiMixin(object):
 
     def get_file(self, remote_path, local_path, **kwargs):
         local_path = getattr(local_path, 'name', local_path)
-        if env.local_deployment:
+        if self.local_deployment:
             return self.local_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
         if env.get('use_sudo'):
             kwargs['use_sudo'] = True
@@ -116,6 +117,11 @@ class ApiMixin(object):
         return fabric_prefix(self.fmt(command))
 
     def exists(self, path, use_sudo=False, verbose=False):
+        def _expand_path(path):
+            return '"$(echo %s)"' % path
+        if self.local_deployment:
+            with settings(hide('everything'), warn_only=True):
+                return not self.run('test -e {}'.format(_expand_path(path))).failed
         return fabric_exists(self.fmt(path), use_sudo=use_sudo, verbose=verbose)
     # END Fabric API
 
@@ -124,17 +130,22 @@ class ApiMixin(object):
         """
         with bash -l virtualenv-wrapper not activate
         sudo -E required for environment variables to be passed in
+
+        TODO: output is missing from commands
         """
         cmd = cmd.replace('"','\\"').replace('$','\\$')
         return self.local('sudo -E -S -p \'sudo password:\' /bin/bash -c "{0}"'.format(cmd), capture=capture, **kwargs)
 
     def local_put(self, local_path, remote_path, capture=True, **kwargs):
-        if kwargs.get('use_sudo'):
-            return self.sudo('cp {0} {1}'.format(local_path, remote_path))
-        kw = dict(
-                capture=kwargs.get('capture', True),
-                shell=kwargs.get('shell', None))
-        return self.local('cp {0} {1}'.format(local_path, remote_path), **kw)
+        # returns list of generated filenames
+        if kwargs.get('use_sudo') or self.use_sudo:
+            result = self.sudo('cp {} {}'.format(local_path, remote_path))
+        else:
+            kw = dict(capture=kwargs.get('capture', True),
+                    shell=kwargs.get('shell', None))
+            result = self.local('cp {} {}'.format(local_path, remote_path), **kw)
+        paths = [os.path.join(remote_path, local_path.split('/')[-1])]
+        return paths
     local_get = local_put
 
     @contextmanager
@@ -171,6 +182,9 @@ class ReleaseMixin(object):
     soppa_proc_daemon = 'supervisor'
     soppa_web_server = 'nginx'
     soppa_db_server = 'postgres'
+
+    local_deployment = False
+    use_sudo = False
 
     def get_default_modules(self):
         i = []
@@ -411,7 +425,11 @@ class DirectoryMixin(object):
         self.sudo('mkdir -p {}'.format(self.release_path))
         if not self.exists(self.path):
             with self.cd(self.basepath):
-                self.sudo('ln -s {basepath}releases/default www.new; mv -T www.new www')
+                if self.operating.is_linux():
+                    self.sudo('ln -s {basepath}releases/default www.new; mv -T www.new www')
+                else:
+                    self.sudo('rm -f www.new && ln -sf {basepath}releases/default www.new')
+                    self.sudo('rm -f www && ln -sf www.new www')
 
     def symlink(self):
         """ mv is atomic op on unix; allows seamless deploy """

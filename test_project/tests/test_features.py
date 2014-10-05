@@ -8,6 +8,7 @@ from soppa.internal.tools import ObjectDict, Upload, generate_config
 from soppa.internal.runner.default import Runner
 from soppa.internal.config import update_config
 from soppa.internal.mixins import DirectoryMixin
+from soppa.internal.config import Config
 
 from ..moda import ModA
 from ..modb import ModB
@@ -162,9 +163,8 @@ class SoppaTest(BaseSuite):
             self.assertEquals(r, '100')
 
     def test_set_setting(self):
-        env.local_deployment = True
         start_str = """hello world\nhawai\n"""
-        ff = File({})
+        ff = File({'local_deployment': True})
         f = ff.tmpfile(start_str)
         f.seek(0)
         ff.set_setting(f.name, 'foobar', su=False)
@@ -312,3 +312,16 @@ class ConfigTest(BaseSuite):
         instances, values = update_config(Django, path=None, ctx={'project': 'stockticker'})
         self.assertEquals(values['globals']['path'], u'/srv/www/stockticker/www/')
         self.assertTrue('stockticker' in values['nodejs']['nodejs_binary_dir'])
+
+    def test_ini_returns_boolean(self):
+        self.assertEquals(True, Config().read_fmt_value('True'))
+        self.assertEquals(False, Config().read_fmt_value('False'))
+
+    def test_ini_returns_int(self):
+        self.assertEquals(3, Config().read_fmt_value('3'))
+
+    def test_ini_returns_float(self):
+        self.assertEquals(4.0, Config().read_fmt_value('4.0'))
+
+    def test_ini_returns_str(self):
+        self.assertEquals('hello', Config().read_fmt_value('hello'))

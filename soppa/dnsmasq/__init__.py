@@ -14,7 +14,7 @@ class Dnsmasq(Soppa):
 
     def setup():
         if self.operating.is_osx():
-            self.run('brew install dnsmasq')
+            self.run('brew install dnsmasq', use_sudo=False)
             if not self.exists('/usr/local/etc/dnsmasq.conf'):
                 self.run('cp $(brew list dnsmasq | grep /dnsmasq.conf.example$) /usr/local/etc/dnsmasq.conf')
             if not self.exists('/Library/LaunchDaemons/homebrew.mxcl.dnsmasq.plist'):

@@ -5,6 +5,10 @@ from pprint import pprint as pp
 from fabric.api import env, task, execute
 from soppa.internal.tools import here, ObjectDict
 
+class SoppaException(Exception):
+    pass
+env.abort_exception = SoppaException
+
 # FABRIC
 env.use_ssh_config = True
 env.colorize_errors = True
@@ -12,7 +16,6 @@ env.user = 'root'# os.environ.get('USER', 'root')
 # /FABRIC
 env.CACHE = {}
 env.ctx = {}
-env.local_deployment = False
 env.performed = {}
 
 # Soppa

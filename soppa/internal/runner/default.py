@@ -7,6 +7,7 @@ from fabric.api import env, execute, task
 from soppa.internal.mixins import NeedMixin, ApiMixin, FormatMixin, ReleaseMixin
 from soppa.internal.tools import import_string, generate_config
 from soppa.internal.config import update_config, Config, load
+from soppa.internal.local import local_deploy
 
 
 class Runner(NeedMixin):
@@ -70,6 +71,9 @@ class Runner(NeedMixin):
         for ingredient in self.recipe:
             hosts = self.get_hosts_for(ingredient['roles'])
             modules = ingredient['modules']
+            if self.config.get('local_deployment', False):
+                local_config = local_deploy()
+                self.config.update(local_config)
             # create a new standalone instance for execution
             runner = Runner(
                     config=self.config,

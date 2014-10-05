@@ -5,7 +5,7 @@ import sys
 class Operating(Soppa):
     def is_linux(self):
         """ Check host operating system when used in combination with aslocal(); otherwise assume Linux """
-        if not env.local_deployment:
+        if not self.local_deployment:
             return True
         return self.is_a('linux')
 
@@ -13,7 +13,7 @@ class Operating(Soppa):
         """ Check host operating system when used in combination with aslocal(); otherwise assume Linux
         - allows local installation for development
         """
-        if not env.local_deployment:
+        if not self.local_deployment:
             return False
         return self.is_a('darwin')
 

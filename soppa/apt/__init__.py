@@ -3,12 +3,18 @@ from soppa.contrib import *
 class Apt(Soppa):
 
     def update(self):
+        if not self.operating.is_linux():
+            return
+
         key = 'apt.packages.updated.{0}'.format(env.host_string)
         if not env.CACHE.get(key):
             self.sudo('apt-get update -qq')
             env.CACHE[key] = True
 
     def install(self, packages, flags=''):
+        if not self.operating.is_linux():
+            return
+
         if isinstance(packages, list):
             packages = ' '.join(list(set(packages)))
         self.sudo('apt-get install -q -y {0} {1}'.format(flags, packages))

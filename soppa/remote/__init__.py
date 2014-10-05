@@ -22,7 +22,7 @@ class Remote(Soppa):
     def run_cmd(self, cmd):#TODO:rename as remote_cmd
         self.sync_local_fabric_env()
         with self.virtualenv.activate(), self.cd(self.root.path):
-            if env.local_deployment:
+            if self.local_deployment:
                 fn = self.file.import_string(cmd)
                 fn()
             else:

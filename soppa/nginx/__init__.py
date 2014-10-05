@@ -22,10 +22,11 @@ class Nginx(Soppa):
             self.sudo('launchctl load /Library/LaunchDaemons/nginx.plist')
 
         if not self.exists('{path}sbin/nginx'):
-            self.up('nginx.bash', '/usr/src/')
+            if not self.exists('{path}sbin/nginx/nginx.bash'):
+                self.up('nginx.bash', '/usr/src/')
+            if self.operating.is_osx():
+                self.run('brew install pcre', use_sudo=False)
             with self.cd('/usr/src/'):
-                if self.operating.is_osx():
-                    self.sudo('brew install pcre')
                 self.sudo('bash nginx.bash')
             
         if not self.exists('{path}conf/mime.types'):
