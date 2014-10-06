@@ -325,3 +325,13 @@ class ConfigTest(BaseSuite):
 
     def test_ini_returns_str(self):
         self.assertEquals('hello', Config().read_fmt_value('hello'))
+
+class LocalTest(BaseSuite):
+    def test_cd(self):
+        d = Django()
+        d.local_deployment = True
+        f = d.file.tmpfile('empty', dir='/tmp/')
+        with d.cd('/tmp'), d.hide('stdout'):
+            rs = d.sudo('ls -laF')
+            self.assertTrue(str(os.path.basename(f.name)) in rs.stdout)
+        f.close()

@@ -10,7 +10,9 @@ from fabric.api import cd as fabric_cd, local as fabric_local, run as fabric_run
 from fabric.contrib.files import exists as fabric_exists
 from fabric.context_managers import prefix as fabric_prefix, settings
 from fabric.decorators import with_settings
-from fabric.operations import prompt as fabric_prompt
+from fabric.operations import prompt as fabric_prompt, _prefix_env_vars, _prefix_commands
+from fabric.colors import red
+from fabric import state
 # /FABRIC
 from soppa.internal.local import run as custom_run
 import invoke
@@ -82,7 +84,7 @@ class ApiMixin(object):
 
     def sudo(self, command, **kwargs):
         if self.local_deployment:
-            return self.local_sudo(command, **kwargs)
+            return self.local(self.fmt(command, **kwargs), use_sudo=True, capture=True, **kwargs)
         return fabric_sudo(self.fmt(command, **kwargs), **self._expects(kwargs, self.sudo_expect))
 
     def run(self, command, **kwargs):
@@ -94,12 +96,22 @@ class ApiMixin(object):
             return fabric_run(self.fmt(command, **kwargs), **self._expects(kwargs, self.run_expect))
 
     def local(self, command, **kwargs):
-        print "local",command
+        given_command = command
+        # Apply cd(), path() etc
+        with_env = _prefix_env_vars(command, local=True)
+        wrapped_command = _prefix_commands(with_env, 'local')
+        if kwargs.get('use_sudo'):
+            #cmd = cmd.replace('"','\\"').replace('$','\\$')
+            wrapped_command = 'sudo -E -S -p \'sudo password:\' /bin/bash -c "{0}"'.format(wrapped_command)
+        print "[local]",wrapped_command
         try:
-            rs = invoke_run(self.fmt(command, **kwargs))
+            hide = None
+            if not state.output.stdout:
+                hide = 'stdout'
+            rs = invoke_run(self.fmt(wrapped_command, **kwargs), hide=hide)
             rs.succeeded = not rs.failed
         except invoke.exceptions.Failure as e:
-            print e
+            print red(e)
             rs = NoOp()
         return rs
 
@@ -120,6 +132,8 @@ class ApiMixin(object):
         return fabric_get(self.fmt(remote_path), self.fmt(local_path), **kwargs)
 
     def cd(self, path):
+        if self.local_deployment:
+            return fabric_lcd(self.fmt(path))
         return fabric_cd(self.fmt(path))
 
     def prefix(self, command):
@@ -139,11 +153,11 @@ class ApiMixin(object):
         """
         with bash -l virtualenv-wrapper not activate
         sudo -E required for environment variables to be passed in
-
         TODO: output is missing from commands
         """
         cmd = cmd.replace('"','\\"').replace('$','\\$')
-        return self.local('sudo -E -S -p \'sudo password:\' /bin/bash -c "{0}"'.format(cmd), capture=capture, **kwargs)
+        cmd = self.fmt(cmd, **kwargs)
+        return self.local(cmd, capture=capture, use_sudo=True, **kwargs)
 
     def local_put(self, local_path, remote_path, capture=True, **kwargs):
         # returns list of generated filenames

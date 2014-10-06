@@ -47,8 +47,8 @@ class File(Soppa):
     def contains_text(self, haystack, needle):
         return (haystack.find(needle) <> -1)
 
-    def tmpfile(self, data, suffix=''):
-        tf = tempfile.NamedTemporaryFile(suffix=suffix)
+    def tmpfile(self, data, suffix='', dir=None):
+        tf = tempfile.NamedTemporaryFile(suffix=suffix, dir=dir)
         tf.write(data)
         tf.flush()
         return tf

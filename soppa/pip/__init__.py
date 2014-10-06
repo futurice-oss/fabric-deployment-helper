@@ -84,7 +84,7 @@ class Pip(Soppa):
         filename = '/tmp/packages_{0}.txt'.format(hashlib.sha256(str(time.time())).hexdigest())
         pkgs = "\n".join(packages)
         f = self.file.tmpfile(pkgs)
-        self.up(f.name, filename)
+        self.put(f.name, filename, use_sudo=True)
         f.close()
         return filename
 
