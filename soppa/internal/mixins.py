@@ -90,7 +90,7 @@ class ApiMixin(object):
     def run(self, command, **kwargs):
         if self.local_deployment:
             return self.local(command, **kwargs)
-        if kwargs.get('user'):
+        if kwargs.get('user') or kwargs.get('use_sudo'):
             return self.sudo(command, **kwargs)
         else:
             return fabric_run(self.fmt(command, **kwargs), **self._expects(kwargs, self.run_expect))
@@ -154,7 +154,7 @@ class ApiMixin(object):
 
     def binary_exists(self, name, use_sudo=False):
         with settings(hide('output', 'warnings'), warn_only=True):
-            return self.sudo('which {}'.format(name), shell=True, use_sudo=use_sudo).succeeded
+            return self.run('which {}'.format(name), shell=True, use_sudo=use_sudo).succeeded
 
     # Local extensions to Fabric
     def local_sudo(self, cmd, capture=True, **kwargs):

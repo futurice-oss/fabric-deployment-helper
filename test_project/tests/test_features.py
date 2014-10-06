@@ -344,3 +344,8 @@ class LocalTest(BaseSuite):
         self.assertTrue(d.exists(f.name))
         f.close()
         self.assertFalse(d.exists('/tmp/does-not-exist-in-this-reality'))
+
+    def test_binary_exists(self):
+        d = Django()
+        d.local_deployment = True
+        self.assertTrue(d.binary_exists('awk', use_sudo=False))
