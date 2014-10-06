@@ -63,10 +63,12 @@ c.installed_modules = [
 'vagrant',
 'virtualenv',]
 
+# order of package managers is execution order
 c.packmans = [
+    'soppa.internal.packagehandler.Apt',
     'soppa.internal.packagehandler.Pip',
     'soppa.internal.packagehandler.PipVenv',
-    'soppa.internal.packagehandler.Apt',]
+]
 
 DEFAULT_NS = ['config','soppa',]
 

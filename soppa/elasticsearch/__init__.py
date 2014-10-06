@@ -7,6 +7,8 @@ class ElasticSearch(Soppa):
     servername = 'elasticsearch.dev'
 
     def setup(self):
+        self.java.setup()
+
         self.package.file_as_release(self.url, dest=self.path)
 
         self.action('up', 'elasticsearch_nginx.conf', '{nginx_conf_dir}',

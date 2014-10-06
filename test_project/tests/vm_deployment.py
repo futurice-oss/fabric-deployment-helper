@@ -72,6 +72,33 @@ class DjangoDeployTestCase(BaseSuite):
         Runner(config, hosts, roles, recipe).run()
 
 class SingleTestCase(BaseSuite):
+    def test_elasticsearch(self):
+        config = dict(
+            project='elasticsearch',
+            user='root',
+            postgres_name='es',
+            postgres_user='es',
+            postgres_password='es',
+        )
+        recipe = [dict(roles='*', modules=['soppa.elasticsearch'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
+
+class DeployTestCase(BaseSuite):
+    def test_hello(self):
+        self.assertEquals(1,1)
+
+    def test_sentry(self):
+        config = dict(
+            project='sentry',
+            user='root',
+            sentry_servername='sentry.dev',
+            postgres_name='sentry',
+            postgres_user='sentry',
+            postgres_password='sentry',
+        )
+        recipe = [dict(roles='*', modules=['soppa.sentry'])]
+        Runner(config, {}, DEFAULT_ROLES, recipe).run()
+
     def test_grafana(self):
         config=dict(
             user='root',
@@ -89,28 +116,12 @@ class SingleTestCase(BaseSuite):
         recipe = [dict(roles='*', modules=['soppa.uwsgi'])]
         Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
-class DeployTestCase(BaseSuite):
-    def test_hello(self):
-        self.assertEquals(1,1)
-
     def test_statsd(self):
         config = dict(
             project='statsd',
             user='root',
         )
         recipe = [dict(roles='*', modules=['soppa.statsd'])]
-        Runner(config, {}, DEFAULT_ROLES, recipe).run()
-
-    def test_sentry(self):
-        config = dict(
-            project='sentry',
-            user='root',
-            sentry_servername='sentry.dev',
-            postgres_name='sentry',
-            postgres_user='sentry',
-            postgres_password='sentry',
-        )
-        recipe = [dict(roles='*', modules=['soppa.sentry'])]
         Runner(config, {}, DEFAULT_ROLES, recipe).run()
 
     def test_nginx(self):

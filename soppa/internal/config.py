@@ -136,6 +136,12 @@ def update_config(cls, path=None, ctx={}):
     if not any([isinstance(k, type(instance)) for k in instances]):
         instances_configuration.append(instance)
 
+    # ensure package managers are included
+    if instances:
+        packman = instances[0].packman()
+        for handler in packman.unique_handlers():
+            instances_configuration.insert(0, handler.get_installer())
+
     for instance in instances_configuration:
         data = generate_config(instance)
         c.update(instance.get_name(), data)

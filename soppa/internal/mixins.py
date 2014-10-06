@@ -103,6 +103,7 @@ class ApiMixin(object):
         if kwargs.get('use_sudo'):
             #cmd = cmd.replace('"','\\"').replace('$','\\$')
             wrapped_command = 'sudo -E -S -p \'sudo password:\' /bin/bash -c "{0}"'.format(wrapped_command)
+        wrapped_command = self.fmt(wrapped_command, **kwargs)
         print "[local]",wrapped_command
         try:
             hide = None
@@ -111,7 +112,7 @@ class ApiMixin(object):
                 hide = 'stdout'
             if self.env.warn_only:
                 warn_only = True
-            rs = invoke_run(self.fmt(wrapped_command, **kwargs), hide=hide, warn=warn_only)
+            rs = invoke_run(wrapped_command, hide=hide, warn=warn_only)
             rs.succeeded = not rs.failed
         except invoke.exceptions.Failure as e:
             print red(e)
