@@ -152,6 +152,10 @@ class ApiMixin(object):
         return fabric_exists(self.fmt(path), use_sudo=use_sudo, verbose=verbose)
     # END Fabric API
 
+    def binary_exists(self, name, use_sudo=False):
+        with settings(hide('output', 'warnings'), warn_only=True):
+            return self.sudo('which {}'.format(name), shell=True, use_sudo=use_sudo).succeeded
+
     # Local extensions to Fabric
     def local_sudo(self, cmd, capture=True, **kwargs):
         """

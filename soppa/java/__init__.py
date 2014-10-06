@@ -12,7 +12,7 @@ class Java(Soppa):
 
     def setup(self):
         self.sudo("mkdir -p {java_path}")
-        if not self.exists(self.java_pkg):
+        if not self.binary_exists('java', use_sudo=True):
             self.sudo("""wget --no-cookies \
             --no-check-certificate \
             --header "Cookie: oraclelicense=accept-securebackup-cookie" \
