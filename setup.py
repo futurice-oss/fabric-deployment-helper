@@ -30,7 +30,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name = "soppa",
-    version = "0.10.1",
+    version = "0.10.2",
     description = "Soppa - Sauce for Fabric",
     url = "http://github.com/futurice/soppa",
     author = "Jussi Vaihia",
@@ -40,9 +40,10 @@ setup(
     keywords = 'fabric soppa',
     license = 'BSD',
     install_requires = [
-        'Fabric==1.8.3',
-        'Jinja2==2.7.2',
-        'dirtools==0.2.0',
+        'Fabric>=1.10.0',
+        'Jinja2>=2.7.2',
+        'dirtools>=0.2.0',
+        'invoke>=0.8.2',
     ],
     cmdclass = {
         'test': TestCommand,
