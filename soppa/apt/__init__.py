@@ -15,6 +15,8 @@ class Apt(Soppa):
         if not self.operating.is_linux():
             return
 
+        self.update()
+
         if isinstance(packages, list):
             packages = ' '.join(list(set(packages)))
         self.sudo('apt-get install -q -y {0} {1}'.format(flags, packages))

@@ -332,6 +332,15 @@ class LocalTest(BaseSuite):
         d.local_deployment = True
         f = d.file.tmpfile('empty', dir='/tmp/')
         with d.cd('/tmp'), d.hide('stdout'):
-            rs = d.sudo('ls -laF')
+            rs = d.run('ls -laF')
             self.assertTrue(str(os.path.basename(f.name)) in rs.stdout)
+            # TODO: test sudo prefixing also by mocking?
         f.close()
+
+    def test_exists(self):
+        d = Django()
+        d.local_deployment = True
+        f = d.file.tmpfile('empty', dir='/tmp/')
+        self.assertTrue(d.exists(f.name))
+        f.close()
+        self.assertFalse(d.exists('/tmp/does-not-exist-in-this-reality'))

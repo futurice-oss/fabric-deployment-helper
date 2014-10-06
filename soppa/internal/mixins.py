@@ -106,9 +106,12 @@ class ApiMixin(object):
         print "[local]",wrapped_command
         try:
             hide = None
+            warn_only = False
             if not state.output.stdout:
                 hide = 'stdout'
-            rs = invoke_run(self.fmt(wrapped_command, **kwargs), hide=hide)
+            if self.env.warn_only:
+                warn_only = True
+            rs = invoke_run(self.fmt(wrapped_command, **kwargs), hide=hide, warn=warn_only)
             rs.succeeded = not rs.failed
         except invoke.exceptions.Failure as e:
             print red(e)
@@ -143,8 +146,8 @@ class ApiMixin(object):
         def _expand_path(path):
             return '"$(echo %s)"' % path
         if self.local_deployment:
-            with settings(hide('everything'), warn_only=True):
-                return not self.run('test -e {}'.format(_expand_path(path))).failed
+            with settings(hide('output'), warn_only=True):
+                return not self.run('test -e {}'.format(_expand_path(self.fmt(path)))).failed
         return fabric_exists(self.fmt(path), use_sudo=use_sudo, verbose=verbose)
     # END Fabric API
 
@@ -187,7 +190,9 @@ class ApiMixin(object):
         if not to:
             raise Exception("Missing arguments")
         upload = Upload(frm, to, instance=self, caller_path=caller_path)
-        return self.template.up(*upload.args, context=self.__dict__)
+        context = self.__dict__
+        context.update(ctx)
+        return self.template.up(*upload.args, context=context)
 
 class ReleaseMixin(object):
     user = os.environ.get('USER', 'root')

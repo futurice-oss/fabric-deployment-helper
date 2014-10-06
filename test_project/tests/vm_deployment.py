@@ -8,8 +8,9 @@ from soppa.internal.runner.default import *
 env.password = ''
 env.mysql_password = os.environ.get('MYSQL_PASS', '')
 
+DEFAULT_HOSTS = ['box1']
 DEFAULT_ROLES = dict(
-all=dict(hosts=['vm']),
+all=dict(hosts=DEFAULT_HOSTS),
 )
 
 class BaseSuite(unittest.TestCase):
@@ -56,9 +57,9 @@ class DjangoDeployTestCase(BaseSuite):
                     http_port=80,
                     max_clients=200,
                     remote_user='root',),
-                hosts=['vm']),
+                hosts=DEFAULT_HOSTS),
             dbservers=dict(
-                hosts=['vm']),
+                hosts=DEFAULT_HOSTS),
         )
         # host -specific settings
         hosts = dict(

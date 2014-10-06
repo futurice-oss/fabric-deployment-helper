@@ -23,7 +23,7 @@ class Nginx(Soppa):
 
         if not self.exists('{path}sbin/nginx'):
             if not self.exists('{path}sbin/nginx/nginx.bash'):
-                self.up('nginx.bash', '/usr/src/')
+                self.up('nginx.bash', '/usr/src/', ctx=dict(nginx_path=self.path.rstrip('/')))
             if self.operating.is_osx():
                 self.run('brew install pcre', use_sudo=False)
             with self.cd('/usr/src/'):
