@@ -16,20 +16,7 @@ all=dict(hosts=DEFAULT_HOSTS),
 class BaseSuite(unittest.TestCase):
     pass
 
-class DjangoDeployTestCase(BaseSuite):
-    def test_mysql(self):
-        config = dict(
-            mysql_name='db',
-            mysql_password=env.mysql_password,
-            user='root',
-            project='mysql',
-        )
-        roles = DEFAULT_ROLES
-        recipe = [
-            dict(roles='*', modules=['soppa.mysql']),
-        ]
-        Runner(config,{},roles,recipe).run()
-
+class DjangoTestCase(BaseSuite):
     def test_django(self):
         config = dict(
             mysql_password=env.mysql_password,
@@ -43,6 +30,21 @@ class DjangoDeployTestCase(BaseSuite):
         ]
         Runner(config,{},roles,recipe).run()
 
+class MysqlTestCase(BaseSuite):
+    def test_mysql(self):
+        config = dict(
+            mysql_name='db',
+            mysql_password=env.mysql_password,
+            user='root',
+            project='mysql',
+        )
+        roles = DEFAULT_ROLES
+        recipe = [
+            dict(roles='*', modules=['soppa.mysql']),
+        ]
+        Runner(config,{},roles,recipe).run()
+
+class GraphiteTestCase(BaseSuite):
     def test_graphite(self):
         config = dict(
             remote_user='root',
@@ -71,7 +73,7 @@ class DjangoDeployTestCase(BaseSuite):
             dict(roles='webservers', modules=['soppa.nginx']),]
         Runner(config, hosts, roles, recipe).run()
 
-class SingleTestCase(BaseSuite):
+class ElasticSearchTestCase(BaseSuite):
     def test_elasticsearch(self):
         config = dict(
             project='elasticsearch',
@@ -144,9 +146,11 @@ def run_deployment_tests():
     runner = unittest.TextTestRunner(stream=stream)
     alltests = unittest.TestSuite(
         map(unittest.makeSuite, [
-            DjangoDeployTestCase,
+            DjangoTestCase,
+            MysqlTestCase,
+            GraphiteTestCase,
             DeployTestCase,
-            SingleTestCase,
+            ElasticSearchTestCase,
     ]))
     result = runner.run(alltests)
     print 'Tests run ', result.testsRun

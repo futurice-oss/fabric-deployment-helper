@@ -10,7 +10,7 @@ class Django(DirectoryMixin, Soppa):
 
         self.git.source(to=self.release_path)
 
-    def setup_post(self):
+    def post_setup(self):
         self.set_dsm(self.settings)
 
         with settings(warn_only=True):# assumes assetgen
@@ -22,7 +22,8 @@ class Django(DirectoryMixin, Soppa):
         with settings(warn_only=True):
             self.manage('migrate --noinput')# assumes South/django 1.7
 
-        self.check_dsm()
+        if not self.check_dsm():
+            raise Exception("DJANGO_SETTINGS_MODULE setup failed")
 
     def set_dsm(self, dsm):
         self.file.set_setting(
@@ -32,7 +33,7 @@ class Django(DirectoryMixin, Soppa):
     def check_dsm(self):
         with self.virtualenv.activate(), self.cd(self.path):
             result = self.sudo('env|grep DJANGO_SETTINGS_MODULE')
-            assert self.fmt(self.settings) in result
+            return (self.fmt(self.settings) in result)
 
     def reset_and_sync(self):
         self.manage('reset_db --router=default --noinput')

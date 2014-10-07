@@ -414,11 +414,6 @@ class FormatMixin(object):
                 kwargs['self'] = self
             try:
                 string = string.format(**kwargs)
-            except KeyError, e:
-                if os.environ.get('DRYRUN', False):
-                    string = 'dryrun'
-                else:
-                    raise
             except AttributeError, e:
                 print 'FMT failed for: {} with {}'.format(string, kwargs)
                 raise

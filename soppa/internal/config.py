@@ -1,6 +1,5 @@
-import ConfigParser
-import copy
-import collections
+import ConfigParser, copy, collections
+from contextlib import contextmanager
 from soppa.internal.tools import generate_config
 from soppa.internal.mixins import ReleaseMixin
 from pprint import pprint as pp
@@ -106,6 +105,13 @@ class Config(object):
 
         self.save()
 
+@contextmanager
+def suppress(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
 import os
 def update_config(cls, path=None, ctx={}):
     from soppa.jinja import Jinja
@@ -117,7 +123,8 @@ def update_config(cls, path=None, ctx={}):
     c = Config(path=path)
 
     instance = cls(ctx)
-    instance.setup()
+    with suppress(Exception):
+        instance.setup()
 
     gl_default = generate_config(instance)
     gl = generate_config(instance, include_cls=[ReleaseMixin])
