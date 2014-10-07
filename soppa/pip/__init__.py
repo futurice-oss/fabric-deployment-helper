@@ -6,7 +6,6 @@ class Pip(Soppa):
     packages_from = '{soppa.local_path}dist/'
     packages_to = '{www_root}dist/'
     extra_index = ''
-    _dirhashes = {}
 
     def setup(self):
         if not self.exists(self.packages_path):
@@ -58,6 +57,7 @@ class Pip(Soppa):
         return missing_requirements
 
     def download(self, requirements, packages_path=None, new_only=False):
+        """ Get requirements into local directory """
         packages_path = self.fmt(packages_path or self.packages_from)
         if new_only:
             missing = self.compare_requirements(path=requirements)
@@ -100,10 +100,12 @@ class Pip(Soppa):
             self.install_packages_from_file(filename, envflags=['HOME={packages_to}'], use_sudo=True)
 
     def path_in_sync(self, path):
-        # TODO: save directory-hash for future, instead of being run-specific
+        """ Check if path contents have changed """
         h = self.file.directory_hash(path)
-        curhash = copy.deepcopy(self._dirhashes.get(path, ''))
-        self._dirhashes[path] = h
+        key = 'dirhashes'
+        self.root._CACHE.setdefault(key, {})
+        curhash = copy.deepcopy(self.root._CACHE[key].get(path, ''))
+        self.root._CACHE[key]['{}.{}'.format(path, self.env.host_string)] = h
         return curhash==h
 
     def sync(self, path=None, target_path=None):

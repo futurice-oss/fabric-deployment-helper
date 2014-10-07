@@ -8,7 +8,7 @@ from soppa.internal.runner.default import *
 env.password = ''
 env.mysql_password = os.environ.get('MYSQL_PASS', '')
 
-DEFAULT_HOSTS = ['box1']
+DEFAULT_HOSTS = ['box1','box2']
 DEFAULT_ROLES = dict(
 all=dict(hosts=DEFAULT_HOSTS),
 )
