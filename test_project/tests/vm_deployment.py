@@ -10,6 +10,7 @@ env.mysql_password = os.environ.get('MYSQL_PASS', '')
 
 DEFAULT_HOSTS = ['box1','box2']
 DEFAULT_ROLES = dict(
+web=dict(hosts=[DEFAULT_HOSTS[0]]),
 all=dict(hosts=DEFAULT_HOSTS),
 )
 

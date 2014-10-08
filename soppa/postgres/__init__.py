@@ -2,7 +2,7 @@ from soppa.contrib import *
 
 class Postgres(Soppa):
     version = '9.1'
-    path = '/etc/postgresql/{postgres_version}/main/'
+    path = '/etc/postgresql/{version}/main/'
     name = '{project}'
     user = ''
     password = ''
