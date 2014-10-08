@@ -21,6 +21,12 @@ env.performed = {}
 # Soppa
 c = SOPPA_DEFAULTS = ObjectDict()
 c.local_path = here(fn=inspect.getfile(sys._getframe(1)))
+
+# ensure imports work the same for "fab task" and "python -m fabric task"
+# by having the calling directory in sys.path
+if c.local_path.rstrip('/') not in sys.path:
+    sys.path.insert(0, c.local_path)
+
 c.basedir = os.getcwd() + os.sep
 c.soppadir = here()
 c.config_dirs = ['config/',]
